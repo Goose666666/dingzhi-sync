@@ -5,116 +5,77 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>定制协作</title>
 <style>
-:root{--ink:#1f2328;--mute:#6b7480;--line:#d9dde3;--bg:#f4f5f7;--card:#fff;--teal:#3f7f8c;--ochre:#c08552;--purple:#7a6a9b;--red:#b5433a;--green:#3f6f5b}
+:root{--ink:#1f2328;--mute:#7a838f;--line:#d9dde3;--bg:#f4f5f7;--teal:#3f7f8c;--red:#b5433a;--green:#3f6f5b;--soft:#eef3f4}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.6 "Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}
-header{background:#fff;border-bottom:1px solid var(--line);padding:14px 28px;display:flex;align-items:center;gap:18px}
-header h1{font-size:20px;margin:0;font-weight:700;letter-spacing:.5px}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 "Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}
+header{background:#fff;border-bottom:1px solid var(--line);padding:0 28px;display:flex;align-items:center;gap:8px;height:60px}
+header h1{font-size:20px;margin:0 28px 0 0;font-weight:700}
+.tab{height:60px;padding:0 22px;border:0;border-bottom:3px solid transparent;background:none;font:inherit;font-size:17px;cursor:pointer;color:var(--mute)}
+.tab.on{color:var(--teal);border-bottom-color:var(--teal);font-weight:700}
 header .who{margin-left:auto;color:var(--mute)}
-main{max-width:1100px;margin:22px auto;padding:0 20px}
-.bar{display:flex;gap:10px;align-items:center;margin-bottom:18px;flex-wrap:wrap}
-.bar input[type=text],.bar select{height:40px;border:1px solid var(--line);border-radius:8px;padding:0 12px;font:inherit;background:#fff}
-.bar input[type=text]{flex:1;min-width:220px}
+main{max-width:1180px;margin:24px auto;padding:0 20px}
 button{height:40px;border:1px solid var(--line);border-radius:8px;padding:0 16px;font:inherit;background:#fff;cursor:pointer;color:var(--ink)}
 button.pri{background:var(--teal);border-color:var(--teal);color:#fff}
+button.sm{height:32px;padding:0 12px;font-size:14px}
 button.warn{color:var(--red)}
 button:disabled{opacity:.5;cursor:default}
-.group{margin:26px 0 10px;font-size:17px;font-weight:700;display:flex;align-items:center;gap:10px}
-.group span{color:var(--mute);font-weight:400;font-size:14px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:12px;display:grid;grid-template-columns:1fr auto;gap:8px 16px}
-.card .t{font-size:17px;font-weight:700;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.badge{font-size:12px;padding:2px 8px;border-radius:999px;border:1px solid var(--line);color:var(--mute);font-weight:400}
-.badge.A{color:var(--teal);border-color:var(--teal)}.badge.B{color:var(--green);border-color:var(--green)}.badge.C{color:var(--ink);border-color:var(--ink)}
-.pill{font-size:12px;padding:2px 10px;border-radius:999px;color:#fff;font-weight:400}
-.pill.待做{background:#8a96a3}.pill.在做{background:var(--ochre)}.pill.待审{background:var(--purple)}.pill.完成{background:var(--green)}
-.meta{color:var(--mute);font-size:13px}
-.note{white-space:pre-wrap;margin:2px 0 4px}
-.files{display:flex;flex-direction:column;gap:4px;margin-top:4px}
-.file{display:flex;align-items:center;gap:10px;font-size:14px}
-.file a{color:var(--teal);text-decoration:none}
-.file .x{color:var(--red);cursor:pointer;font-size:12px}
-.acts{display:flex;flex-direction:column;gap:8px;align-items:stretch}
-.acts button{height:34px;padding:0 12px;font-size:14px}
-.acts select{height:34px;border:1px solid var(--line);border-radius:8px;padding:0 8px;font:inherit;background:#fff}
-.log{margin-top:34px;border-top:1px solid var(--line);padding-top:14px}
-.log h2{font-size:16px;margin:0 0 8px}
-.log div{font-size:13px;color:var(--mute);padding:2px 0}
+input,textarea{border:1px solid var(--line);border-radius:8px;padding:0 12px;font:inherit;background:#fff;height:40px}
+.add{display:grid;grid-template-columns:200px 1fr auto;gap:10px;margin-bottom:18px}
+table{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+th,td{padding:12px 14px;text-align:left;vertical-align:top;border-top:1px solid var(--line)}
+th{background:var(--soft);font-weight:700;border-top:0}
+td.n{width:56px;color:var(--mute)}
+td.c{width:180px;font-weight:700}
+td.o{width:80px;color:var(--mute)}
+td.f{width:300px}
+td.a{width:150px;white-space:nowrap}
+td.need{white-space:pre-wrap}
+tr.done td{color:var(--mute)}
+tr.done td.c{font-weight:400;text-decoration:line-through}
+tr.sep td{background:var(--soft);color:var(--mute);padding:8px 14px;font-size:14px}
+.file{display:flex;align-items:center;gap:8px;margin:2px 0}
+.file a{color:var(--teal);text-decoration:none;word-break:break-all}
+.file .x{color:var(--red);cursor:pointer;font-size:13px}
+.empty{color:var(--mute);text-align:center;padding:60px 0}
 .mask{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;align-items:center;justify-content:center;z-index:9}
 .mask.on{display:flex}
-.dlg{background:#fff;border-radius:14px;padding:22px 24px;width:min(560px,92vw);display:grid;gap:12px}
-.dlg h2{margin:0 0 4px;font-size:18px}
-.dlg label{display:grid;gap:4px;font-size:14px;color:var(--mute)}
-.dlg input,.dlg select,.dlg textarea{height:40px;border:1px solid var(--line);border-radius:8px;padding:0 12px;font:inherit;width:100%}
-.dlg textarea{height:96px;padding:8px 12px;resize:vertical}
+.dlg{background:#fff;border-radius:14px;padding:24px;width:min(520px,92vw);display:grid;gap:12px}
+.dlg h2{margin:0;font-size:18px}
+.dlg input,.dlg textarea{width:100%}
+.dlg textarea{height:120px;padding:8px 12px;resize:vertical}
 .dlg .row{display:flex;gap:10px;justify-content:flex-end}
-.dlg .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.members{display:grid;gap:6px}
-.members div{display:flex;align-items:center;gap:10px}
-.members div span{flex:1}
-.members button{height:32px;padding:0 10px;font-size:13px}
-#toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 18px;border-radius:10px;display:none;z-index:10;max-width:80vw}
-.empty{color:var(--mute);text-align:center;padding:60px 0}
+#toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 18px;border-radius:10px;display:none;z-index:10}
 </style>
 </head>
 <body>
 <header>
   <h1>定制协作</h1>
+  <button class="tab" data-t="A">A 题</button>
+  <button class="tab" data-t="B">B 题</button>
+  <button class="tab" data-t="C">C 题</button>
   <span class="who" id="who"></span>
-  <button id="btnSet" hidden>设置</button>
   <button id="btnOut" hidden>退出</button>
 </header>
 <main>
-  <div class="bar" id="bar" hidden>
-    <input type="text" id="q" placeholder="搜题目、版本、负责人">
-    <select id="fs"><option value="">全部状态</option><option>待做</option><option>在做</option><option>待审</option><option>完成</option></select>
-    <button id="btnReload">刷新</button>
-    <button class="pri" id="btnNew">新建定制</button>
+  <div class="add" id="add" hidden>
+    <input id="aCustomer" placeholder="客户">
+    <input id="aNeed" placeholder="需求">
+    <button class="pri" id="aOk">添加</button>
   </div>
-  <div id="list"><div class="empty">正在读取</div></div>
-  <div class="log" id="logBox" hidden><h2>动态</h2><div id="log"></div></div>
+  <div id="list"></div>
 </main>
 
 <div class="mask" id="mLogin"><div class="dlg">
-  <h2>登录</h2>
-  <label>名字<input id="lName" type="text" autocomplete="username"></label>
-  <label>密码<input id="lPwd" type="password" autocomplete="current-password"></label>
+  <h2>你是谁</h2>
+  <input id="lName" placeholder="ltr / qyh / zjl">
   <div class="row"><button class="pri" id="lOk">进入</button></div>
 </div></div>
 
-<div class="mask" id="mSet"><div class="dlg">
-  <h2>设置</h2>
-  <div class="row2">
-    <label>旧密码<input id="pOld" type="password"></label>
-    <label>新密码<input id="pNew" type="password"></label>
-  </div>
-  <div class="row"><button id="pOk">改密码</button></div>
-  <div id="adminBox" hidden>
-    <h2>成员</h2>
-    <div class="members" id="members"></div>
-    <div class="row2" style="margin-top:8px">
-      <label>名字<input id="uName" type="text"></label>
-      <label>初始密码<input id="uPwd" type="text"></label>
-    </div>
-    <div class="row"><button id="uOk">加成员</button></div>
-  </div>
-  <div class="row"><button id="sClose">关闭</button></div>
-</div></div>
-
 <div class="mask" id="mEdit"><div class="dlg">
-  <h2 id="eTitle">新建定制</h2>
-  <div class="row2">
-    <label>题目<input id="eTopic" type="text" placeholder="2025国赛B题" list="topics"><datalist id="topics"></datalist></label>
-    <label>版本<input id="eVer" type="text" placeholder="定制03"></label>
-  </div>
-  <div class="row2">
-    <label>画图模板<select id="eTpl"><option>A 彩色分栏</option><option>B 淡彩强调</option><option>C 黑白流程</option></select></label>
-    <label>负责人<input id="eOwner" type="text"></label>
-  </div>
-  <div class="row2">
-    <label>状态<select id="eStatus"><option>待做</option><option>在做</option><option>待审</option><option>完成</option></select></label>
-    <label>侧重点<input id="eFocus" type="text" placeholder="换构图、拆模型准备、集中布局"></label>
-  </div>
-  <label>说明<textarea id="eNote"></textarea></label>
+  <h2>编辑</h2>
+  <input id="eCustomer" placeholder="客户">
+  <textarea id="eNeed" placeholder="需求"></textarea>
+  <input id="eOwner" placeholder="负责人">
   <div class="row"><button id="eCancel">取消</button><button class="pri" id="eOk">保存</button></div>
 </div></div>
 
@@ -122,122 +83,86 @@ button:disabled{opacity:.5;cursor:default}
 <div id="toast"></div>
 
 <script>
-const S = { me: null, data: { records: [], log: [] }, editing: null, uploadTo: null };
+const S = { me: '', topic: localStorage.getItem('dz_topic') || 'A', records: [], editing: null, uploadTo: null };
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const fmt = t => t ? t.replace('T', ' ').slice(0, 16) : '';
 let toastTimer;
-function toast(msg) { const t = $('toast'); t.textContent = msg; t.style.display = 'block'; clearTimeout(toastTimer); toastTimer = setTimeout(() => t.style.display = 'none', 2600); }
+function toast(msg) { const t = $('toast'); t.textContent = msg; t.style.display = 'block'; clearTimeout(toastTimer); toastTimer = setTimeout(() => t.style.display = 'none', 2400); }
 async function api(path, opt = {}) {
-  const r = await fetch(path, { ...opt, headers: opt.body && !(opt.body instanceof FormData) ? { 'Content-Type': 'application/json', ...(opt.headers || {}) } : (opt.headers || {}) });
+  const r = await fetch(path, { ...opt, headers: opt.body && !(opt.body instanceof FormData) ? { 'Content-Type': 'application/json' } : {} });
   const j = await r.json().catch(() => ({}));
   if (r.status === 401) { showLogin(); throw new Error(j.error || '请先登录'); }
   if (!r.ok) throw new Error(j.error || ('出错 ' + r.status));
   return j;
 }
-function showLogin() { S.me = null; $('mLogin').classList.add('on'); $('bar').hidden = true; $('logBox').hidden = true; $('btnSet').hidden = true; $('btnOut').hidden = true; $('who').textContent = ''; $('list').innerHTML = ''; $('lName').focus(); }
+function showLogin() { S.me = ''; $('mLogin').classList.add('on'); $('add').hidden = true; $('btnOut').hidden = true; $('who').textContent = ''; $('list').innerHTML = ''; $('lName').focus(); }
 async function boot() {
   const me = await api('api/me');
   if (!me.name) return showLogin();
-  S.me = me; $('mLogin').classList.remove('on');
-  $('who').textContent = me.name; $('btnSet').hidden = false; $('btnOut').hidden = false; $('bar').hidden = false; $('logBox').hidden = false;
+  S.me = me.name; $('mLogin').classList.remove('on');
+  $('who').textContent = me.name; $('btnOut').hidden = false; $('add').hidden = false;
   await refresh();
 }
 async function refresh() {
-  try { S.data = await api('api/data'); render(); } catch (e) { $('list').innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
+  try { S.records = (await api('api/data')).records; render(); } catch (e) { $('list').innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
 }
 function render() {
-  const q = $('q').value.trim().toLowerCase(), fs = $('fs').value;
-  const recs = S.data.records.filter(r => (!fs || r.status === fs) && (!q || [r.topic, r.version, r.owner, r.focus, r.note].join(' ').toLowerCase().includes(q)));
-  $('topics').innerHTML = [...new Set(S.data.records.map(r => r.topic))].map(t => `<option value="${esc(t)}">`).join('');
-  if (!recs.length) $('list').innerHTML = `<div class="empty">${S.data.records.length ? '没有符合的记录' : '还没有记录，点新建定制'}</div>`;
-  else {
-    const byTopic = {};
-    recs.forEach(r => (byTopic[r.topic] ||= []).push(r));
-    $('list').innerHTML = Object.entries(byTopic).map(([t, rs]) => `<div class="group">${esc(t)}<span>${rs.length} 版</span></div>` + rs.sort((a, b) => a.version.localeCompare(b.version, 'zh')).map(card).join('')).join('');
-  }
-  $('log').innerHTML = S.data.log.slice(0, 40).map(l => `<div>${fmt(l.at)} ${esc(l.by)} ${esc(l.text)}</div>`).join('') || '<div>暂无</div>';
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t.dataset.t === S.topic));
+  const rows = S.records.filter(r => r.topic === S.topic);
+  const todo = rows.filter(r => !r.done).sort((a, b) => a.created.localeCompare(b.created));
+  const done = rows.filter(r => r.done).sort((a, b) => b.updated.localeCompare(a.updated));
+  if (!rows.length) { $('list').innerHTML = '<div class="empty">还没有客户</div>'; return; }
+  let n = 0;
+  const tr = r => `<tr class="${r.done ? 'done' : ''}">
+    <td class="n">${++n}</td>
+    <td class="c">${esc(r.customer)}</td>
+    <td class="need">${esc(r.need)}</td>
+    <td class="o">${esc(r.owner)}</td>
+    <td class="f">${(r.files || []).map(f => `<div class="file"><a href="files/${encodeURIComponent(r.id)}/${encodeURIComponent(f.name)}">${esc(f.name)}</a><span class="x" data-rm="${r.id}" data-name="${esc(f.name)}">删除</span></div>`).join('')}<button class="sm" data-up="${r.id}">上传</button></td>
+    <td class="a"><button class="sm" data-done="${r.id}">${r.done ? '恢复' : '完成'}</button> <button class="sm" data-ed="${r.id}">编辑</button> <button class="sm warn" data-del="${r.id}">删除</button></td>
+  </tr>`;
+  $('list').innerHTML = `<table><tr><th></th><th>客户</th><th>需求</th><th>负责人</th><th>文件包</th><th></th></tr>
+    ${todo.map(tr).join('')}
+    ${done.length ? `<tr class="sep"><td colspan="6">已完成</td></tr>` + done.map(tr).join('') : ''}
+  </table>`;
 }
-function card(r) {
-  const tpl = (r.template || '').charAt(0);
-  const files = (r.files || []).map(f => `<div class="file"><a href="files/${encodeURIComponent(r.id)}/${encodeURIComponent(f.name)}">${esc(f.name)}</a><span class="meta">${(f.size / 1048576).toFixed(1)} MB ${esc(f.by)} ${fmt(f.at)}</span><span class="x" data-rm="${esc(r.id)}" data-name="${esc(f.name)}">删除</span></div>`).join('');
-  return `<div class="card">
-    <div>
-      <div class="t">${esc(r.version)} <span class="badge ${tpl}">${esc(r.template)}</span> <span class="pill ${esc(r.status)}">${esc(r.status)}</span></div>
-      <div class="meta">负责人 ${esc(r.owner || '未定')} · 侧重 ${esc(r.focus || '无')} · 更新 ${fmt(r.updated)} ${esc(r.updatedBy || '')}</div>
-      ${r.note ? `<div class="note">${esc(r.note)}</div>` : ''}
-      <div class="files">${files}</div>
-    </div>
-    <div class="acts">
-      <select data-st="${esc(r.id)}">${['待做', '在做', '待审', '完成'].map(s => `<option ${s === r.status ? 'selected' : ''}>${s}</option>`).join('')}</select>
-      <button data-up="${esc(r.id)}">上传文件</button>
-      <button data-ed="${esc(r.id)}">编辑</button>
-      <button class="warn" data-del="${esc(r.id)}">删除</button>
-    </div>
-  </div>`;
-}
-function openEdit(r) {
-  S.editing = r ? r.id : null;
-  $('eTitle').textContent = r ? '编辑定制' : '新建定制';
-  $('eTopic').value = r?.topic || ''; $('eVer').value = r?.version || ''; $('eTpl').value = r?.template || 'A 彩色分栏';
-  $('eOwner').value = r ? (r.owner || '') : S.me.name; $('eStatus').value = r?.status || '待做'; $('eFocus').value = r?.focus || ''; $('eNote').value = r?.note || '';
-  $('mEdit').classList.add('on'); $('eTopic').focus();
-}
-async function submitEdit() {
-  const v = { topic: $('eTopic').value.trim(), version: $('eVer').value.trim(), template: $('eTpl').value, owner: $('eOwner').value.trim(), status: $('eStatus').value, focus: $('eFocus').value.trim(), note: $('eNote').value.trim() };
-  if (!v.topic || !v.version) { toast('题目和版本不能空'); return; }
-  $('eOk').disabled = true;
-  try {
-    if (S.editing) await api('api/records/' + S.editing, { method: 'PUT', body: JSON.stringify(v) });
-    else await api('api/records', { method: 'POST', body: JSON.stringify(v) });
-    $('mEdit').classList.remove('on'); await refresh(); toast('已保存');
-  } catch (e) { toast(e.message); }
-  $('eOk').disabled = false;
-}
-async function uploadFiles(rid, list) {
-  const fd = new FormData();
-  let total = 0;
-  for (const f of list) { fd.append('file', f, f.name); total += f.size; }
-  if (total > 500 * 1048576) { toast('一次最多传 500 MB'); return; }
-  toast('上传中 ' + (total / 1048576).toFixed(1) + ' MB');
-  await api('api/records/' + rid + '/files', { method: 'POST', body: fd });
-  await refresh(); toast('上传完成');
-}
-async function loadMembers() {
-  const us = await api('api/users');
-  $('members').innerHTML = us.map(u => `<div><span>${esc(u.name)} ${u.role === 'admin' ? '管理员' : ''}</span>${u.name === S.me.name ? '' : `<button class="warn" data-ru="${esc(u.name)}">删除</button>`}</div>`).join('');
+async function addRow() {
+  const customer = $('aCustomer').value.trim(), need = $('aNeed').value.trim();
+  if (!customer) { toast('客户不能空'); return; }
+  try { await api('api/records', { method: 'POST', body: JSON.stringify({ topic: S.topic, customer, need }) }); $('aCustomer').value = ''; $('aNeed').value = ''; await refresh(); }
+  catch (e) { toast(e.message); }
 }
 document.addEventListener('click', async e => {
-  const b = e.target.closest('[data-up],[data-ed],[data-del],[data-rm],[data-ru]');
-  if (!b) return;
-  const find = id => S.data.records.find(r => r.id === id);
+  const t = e.target.closest('.tab'); if (t) { S.topic = t.dataset.t; localStorage.setItem('dz_topic', S.topic); render(); return; }
+  const b = e.target.closest('[data-up],[data-ed],[data-del],[data-rm],[data-done]'); if (!b) return;
+  const find = id => S.records.find(r => r.id === id);
   try {
     if (b.dataset.up) { S.uploadTo = b.dataset.up; $('fileIn').value = ''; $('fileIn').click(); }
-    else if (b.dataset.ed) openEdit(find(b.dataset.ed));
-    else if (b.dataset.del) { const r = find(b.dataset.del); if (confirm(`删除 ${r.topic} ${r.version} 和它的文件？`)) { await api('api/records/' + r.id, { method: 'DELETE' }); await refresh(); } }
+    else if (b.dataset.done) { const r = find(b.dataset.done); await api('api/records/' + r.id, { method: 'PUT', body: JSON.stringify({ done: !r.done }) }); await refresh(); }
+    else if (b.dataset.ed) { const r = find(b.dataset.ed); S.editing = r.id; $('eCustomer').value = r.customer; $('eNeed').value = r.need; $('eOwner').value = r.owner; $('mEdit').classList.add('on'); }
+    else if (b.dataset.del) { const r = find(b.dataset.del); if (confirm(`删除 ${r.customer} 这一行和它的文件？`)) { await api('api/records/' + r.id, { method: 'DELETE' }); await refresh(); } }
     else if (b.dataset.rm) { if (confirm('删除文件 ' + b.dataset.name + '？')) { await api('api/records/' + b.dataset.rm + '/files/' + encodeURIComponent(b.dataset.name), { method: 'DELETE' }); await refresh(); } }
-    else if (b.dataset.ru) { if (confirm('删除成员 ' + b.dataset.ru + '？')) { await api('api/users/' + encodeURIComponent(b.dataset.ru), { method: 'DELETE' }); await loadMembers(); } }
   } catch (err) { toast(err.message); }
 });
-document.addEventListener('change', async e => {
-  const s = e.target.closest('[data-st]'); if (!s) return;
-  try { await api('api/records/' + s.dataset.st, { method: 'PUT', body: JSON.stringify({ status: s.value }) }); await refresh(); toast('已改状态'); }
-  catch (err) { toast(err.message); }
+$('fileIn').addEventListener('change', async () => {
+  const list = [...$('fileIn').files]; if (!S.uploadTo || !list.length) return;
+  const fd = new FormData(); let total = 0;
+  for (const f of list) { fd.append('file', f, f.name); total += f.size; }
+  if (total > 500 * 1048576) { toast('一次最多传 500 MB'); return; }
+  toast('上传中');
+  try { await api('api/records/' + S.uploadTo + '/files', { method: 'POST', body: fd }); await refresh(); toast('已上传'); } catch (err) { toast(err.message); }
 });
-$('fileIn').addEventListener('change', async () => { if (S.uploadTo && $('fileIn').files.length) { try { await uploadFiles(S.uploadTo, [...$('fileIn').files]); } catch (err) { toast(err.message); } } });
-$('lOk').onclick = async () => { try { await api('api/login', { method: 'POST', body: JSON.stringify({ name: $('lName').value.trim(), password: $('lPwd').value }) }); $('lPwd').value = ''; await boot(); } catch (e) { toast(e.message); } };
-$('lPwd').addEventListener('keydown', e => { if (e.key === 'Enter') $('lOk').click(); });
-$('btnOut').onclick = async () => { await api('api/logout', { method: 'POST', body: '{}' }); showLogin(); };
-$('btnSet').onclick = async () => { $('pOld').value = ''; $('pNew').value = ''; $('adminBox').hidden = S.me.role !== 'admin'; if (S.me.role === 'admin') await loadMembers(); $('mSet').classList.add('on'); };
-$('sClose').onclick = () => $('mSet').classList.remove('on');
-$('pOk').onclick = async () => { try { await api('api/password', { method: 'POST', body: JSON.stringify({ old: $('pOld').value, new: $('pNew').value }) }); toast('密码已改'); $('pOld').value = ''; $('pNew').value = ''; } catch (e) { toast(e.message); } };
-$('uOk').onclick = async () => { try { await api('api/users', { method: 'POST', body: JSON.stringify({ name: $('uName').value.trim(), password: $('uPwd').value }) }); $('uName').value = ''; $('uPwd').value = ''; await loadMembers(); toast('已加成员'); } catch (e) { toast(e.message); } };
-$('btnNew').onclick = () => openEdit(null);
+$('eOk').onclick = async () => {
+  try { await api('api/records/' + S.editing, { method: 'PUT', body: JSON.stringify({ customer: $('eCustomer').value.trim(), need: $('eNeed').value.trim(), owner: $('eOwner').value.trim() }) }); $('mEdit').classList.remove('on'); await refresh(); }
+  catch (e) { toast(e.message); }
+};
 $('eCancel').onclick = () => $('mEdit').classList.remove('on');
-$('eOk').onclick = submitEdit;
-$('btnReload').onclick = refresh;
-$('q').oninput = render; $('fs').onchange = render;
-document.querySelectorAll('.mask:not(#mLogin)').forEach(m => m.addEventListener('click', e => { if (e.target === m) m.classList.remove('on'); }));
+$('aOk').onclick = addRow;
+$('aNeed').addEventListener('keydown', e => { if (e.key === 'Enter') addRow(); });
+$('lOk').onclick = async () => { try { await api('api/login', { method: 'POST', body: JSON.stringify({ name: $('lName').value.trim() }) }); await boot(); } catch (e) { toast(e.message); } };
+$('lName').addEventListener('keydown', e => { if (e.key === 'Enter') $('lOk').click(); });
+$('btnOut').onclick = () => { document.cookie = 'dz_sid=; Path=/; Max-Age=0'; showLogin(); };
+$('mEdit').addEventListener('click', e => { if (e.target === $('mEdit')) $('mEdit').classList.remove('on'); });
 boot();
 </script>
 </body>
