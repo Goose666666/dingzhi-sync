@@ -319,7 +319,7 @@ function renderLib() {
   $('sub').textContent = `${d.dirs.length} 个文件夹 · ${d.files.length} 个文件`;
   const crumb = `<div class="crumb"><a data-go="">文件库</a>${parts.map((p, i) => `<span class="sp">/</span>${i === parts.length - 1 ? `<b>${esc(p)}</b>` : `<a data-go="${esc(parts.slice(0, i + 1).join('/'))}">${esc(p)}</a>`}`).join('')}
     <span style="flex:1"></span><div class="libbar">${d.path ? `<button class="sm" id="libUp">上传文件</button><button class="sm" id="libUpDir">上传文件夹</button><button class="sm" id="libMk">新建文件夹</button>` : ''}</div></div>`;
-  const FIXED = ['原稿/A题', '原稿/B题', '原稿/C题'];
+  const FIXED = ['原稿', '定制稿', '代码'].flatMap(k => ['A', 'B', 'C'].map(x => k + '/' + x + '题'));
   const dirTile = x => { const p = d.path ? d.path + '/' + x.name : x.name; return `<div class="tile dir" data-go="${esc(p)}"><div class="ic"></div><div class="nm">${esc(x.name)}</div><div class="mt">${x.count} 项</div>${parts.length && !FIXED.includes(p) ? `<div class="ops"><span class="x" data-ldel="${esc(p)}">删除</span></div>` : ''}</div>`; };
   const fileTile = x => {
     const p = d.path + '/' + x.name, ext = (x.name.split('.').pop() || '').toLowerCase(), url = 'lib/' + enc(p);
