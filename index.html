@@ -32,7 +32,9 @@ td.note input{width:100%;height:36px}
 td.price{width:120px}
 td.price input{width:100%;height:36px}
 td.a{width:340px;white-space:nowrap;text-align:right}
-td.a .pf{display:inline-block;margin:6px 0 0 4px;color:var(--teal);text-decoration:none;font-size:14px}
+td.a .pfs{display:flex;gap:10px;justify-content:flex-end;margin-top:10px}
+td.a .pf{display:flex;flex-direction:column;align-items:center;gap:2px;color:var(--mute);text-decoration:none;font-size:13px}
+td.a .pf img{height:96px;max-width:150px;object-fit:cover;border:1px solid var(--line);border-radius:8px;background:#fff}
 table.sum td,table.sum th{padding:12px 14px;text-align:right;border-top:1px solid var(--line);color:var(--ink)}
 table.sum th{background:var(--soft);border-top:0;font-weight:700}
 table.sum td:first-child,table.sum th:first-child{text-align:left;font-weight:700}
@@ -166,7 +168,7 @@ function render() {
     <td><div class="tree">${dirRows(r.id, tree(r.files || []), '')}</div>
       <div class="btns"><button class="sm" data-up="${r.id}">上传</button></div></td>
     <td class="a">${FLAGS.map(([k, off, on]) => `<button class="sm ${r[k] ? 'on' : ''}" data-flag="${k}" data-id="${r.id}">${r[k] ? on : off}</button> `).join('')}<button class="sm warn" data-del="${r.id}">删除</button>
-      <div>${FLAGS.filter(([k]) => r.proof && r.proof[k]).map(([k, off, on]) => `<a class="pf" target="_blank" href="files/${encodeURIComponent(r.id)}/${enc(r.proof[k])}?inline=1">${on}凭证</a>`).join('')}</div></td>
+      <div class="pfs">${FLAGS.filter(([k]) => r.proof && r.proof[k]).map(([k, off, on]) => `<a class="pf" target="_blank" href="files/${encodeURIComponent(r.id)}/${enc(r.proof[k])}?inline=1" title="${on}"><img src="files/${encodeURIComponent(r.id)}/${enc(r.proof[k])}?inline=1" alt="${on}"><span>${on}</span></a>`).join('')}</div></td>
   </tr>`;
   $('list').innerHTML = `<table><tr><th></th><th>备注</th><th>定价</th><th>文件</th><th>状态</th></tr>${todo.map(tr).join('')}${done.length ? `<tr class="sep"><td colspan="5">已完成</td></tr>` + done.map(tr).join('') : ''}</table>`;
 }
