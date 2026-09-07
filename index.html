@@ -31,7 +31,7 @@ button:disabled{opacity:.5;cursor:default}
 .note{white-space:pre-wrap;margin:2px 0 4px}
 .files{display:flex;flex-direction:column;gap:4px;margin-top:4px}
 .file{display:flex;align-items:center;gap:10px;font-size:14px}
-.file a{color:var(--teal);text-decoration:none;cursor:pointer}
+.file a{color:var(--teal);text-decoration:none}
 .file .x{color:var(--red);cursor:pointer;font-size:12px}
 .acts{display:flex;flex-direction:column;gap:8px;align-items:stretch}
 .acts button{height:34px;padding:0 12px;font-size:14px}
@@ -48,6 +48,10 @@ button:disabled{opacity:.5;cursor:default}
 .dlg textarea{height:96px;padding:8px 12px;resize:vertical}
 .dlg .row{display:flex;gap:10px;justify-content:flex-end}
 .dlg .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.members{display:grid;gap:6px}
+.members div{display:flex;align-items:center;gap:10px}
+.members div span{flex:1}
+.members button{height:32px;padding:0 10px;font-size:13px}
 #toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 18px;border-radius:10px;display:none;z-index:10;max-width:80vw}
 .empty{color:var(--mute);text-align:center;padding:60px 0}
 </style>
@@ -55,27 +59,45 @@ button:disabled{opacity:.5;cursor:default}
 <body>
 <header>
   <h1>定制协作</h1>
-  <span id="repoName" class="meta"></span>
   <span class="who" id="who"></span>
-  <button id="btnSet">设置</button>
+  <button id="btnSet" hidden>设置</button>
+  <button id="btnOut" hidden>退出</button>
 </header>
 <main>
-  <div class="bar">
+  <div class="bar" id="bar" hidden>
     <input type="text" id="q" placeholder="搜题目、版本、负责人">
     <select id="fs"><option value="">全部状态</option><option>待做</option><option>在做</option><option>待审</option><option>完成</option></select>
     <button id="btnReload">刷新</button>
     <button class="pri" id="btnNew">新建定制</button>
   </div>
   <div id="list"><div class="empty">正在读取</div></div>
-  <div class="log"><h2>动态</h2><div id="log"></div></div>
+  <div class="log" id="logBox" hidden><h2>动态</h2><div id="log"></div></div>
 </main>
+
+<div class="mask" id="mLogin"><div class="dlg">
+  <h2>登录</h2>
+  <label>名字<input id="lName" type="text" autocomplete="username"></label>
+  <label>密码<input id="lPwd" type="password" autocomplete="current-password"></label>
+  <div class="row"><button class="pri" id="lOk">进入</button></div>
+</div></div>
 
 <div class="mask" id="mSet"><div class="dlg">
   <h2>设置</h2>
-  <label>GitHub 令牌<input id="sToken" type="password" placeholder="github_pat_…"></label>
-  <label>数据仓库<input id="sRepo" type="text" placeholder="Goose666666/dingzhi-sync-data"></label>
-  <label>署名<input id="sName" type="text" placeholder="动态里显示的名字"></label>
-  <div class="row"><button id="sCancel">取消</button><button class="pri" id="sOk">保存</button></div>
+  <div class="row2">
+    <label>旧密码<input id="pOld" type="password"></label>
+    <label>新密码<input id="pNew" type="password"></label>
+  </div>
+  <div class="row"><button id="pOk">改密码</button></div>
+  <div id="adminBox" hidden>
+    <h2>成员</h2>
+    <div class="members" id="members"></div>
+    <div class="row2" style="margin-top:8px">
+      <label>名字<input id="uName" type="text"></label>
+      <label>初始密码<input id="uPwd" type="text"></label>
+    </div>
+    <div class="row"><button id="uOk">加成员</button></div>
+  </div>
+  <div class="row"><button id="sClose">关闭</button></div>
 </div></div>
 
 <div class="mask" id="mEdit"><div class="dlg">
@@ -100,74 +122,46 @@ button:disabled{opacity:.5;cursor:default}
 <div id="toast"></div>
 
 <script>
-const API = 'https://api.github.com';
-const DATA_PATH = 'records.json';
-const S = {
-  token: localStorage.getItem('dz_token') || '',
-  repo: localStorage.getItem('dz_repo') || 'Goose666666/dingzhi-sync-data',
-  name: localStorage.getItem('dz_name') || '',
-  data: { records: [], log: [] },
-  sha: null,
-  login: '',
-  editing: null,
-  uploadTo: null,
-};
+const S = { me: null, data: { records: [], log: [] }, editing: null, uploadTo: null };
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const now = () => new Date().toISOString();
 const fmt = t => t ? t.replace('T', ' ').slice(0, 16) : '';
-const who = () => S.name || S.login || '匿名';
 let toastTimer;
 function toast(msg) { const t = $('toast'); t.textContent = msg; t.style.display = 'block'; clearTimeout(toastTimer); toastTimer = setTimeout(() => t.style.display = 'none', 2600); }
-
-function b64(bytes) { let s = ''; for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000)); return btoa(s); }
-function b64text(str) { return b64(new TextEncoder().encode(str)); }
-function unb64text(str) { const bin = atob(str.replace(/\n/g, '')); const u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return new TextDecoder().decode(u); }
-
-async function gh(path, opt = {}, raw = false) {
-  const r = await fetch(API + path, { ...opt, headers: { Authorization: 'Bearer ' + S.token, Accept: raw ? 'application/vnd.github.raw' : 'application/vnd.github+json', ...(opt.headers || {}) } });
-  if (r.status === 404) return null;
-  if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(r.status + ' ' + (e.message || '')); }
-  return raw ? r : r.json();
+async function api(path, opt = {}) {
+  const r = await fetch(path, { ...opt, headers: opt.body && !(opt.body instanceof FormData) ? { 'Content-Type': 'application/json', ...(opt.headers || {}) } : (opt.headers || {}) });
+  const j = await r.json().catch(() => ({}));
+  if (r.status === 401) { showLogin(); throw new Error(j.error || '请先登录'); }
+  if (!r.ok) throw new Error(j.error || ('出错 ' + r.status));
+  return j;
 }
-const cpath = p => `/repos/${S.repo}/contents/${p.split('/').map(encodeURIComponent).join('/')}`;
-
-async function loadData() {
-  const j = await gh(cpath(DATA_PATH));
-  if (!j) { S.data = { records: [], log: [] }; S.sha = null; return; }
-  S.data = JSON.parse(unb64text(j.content)); S.sha = j.sha;
-  S.data.records ||= []; S.data.log ||= [];
+function showLogin() { S.me = null; $('mLogin').classList.add('on'); $('bar').hidden = true; $('logBox').hidden = true; $('btnSet').hidden = true; $('btnOut').hidden = true; $('who').textContent = ''; $('list').innerHTML = ''; $('lName').focus(); }
+async function boot() {
+  const me = await api('/api/me');
+  if (!me.name) return showLogin();
+  S.me = me; $('mLogin').classList.remove('on');
+  $('who').textContent = me.name; $('btnSet').hidden = false; $('btnOut').hidden = false; $('bar').hidden = false; $('logBox').hidden = false;
+  await refresh();
 }
-async function saveData(mutate, msg) {
-  for (let k = 0; k < 3; k++) {
-    await loadData();
-    mutate(S.data);
-    S.data.log.unshift({ at: now(), by: who(), text: msg });
-    S.data.log = S.data.log.slice(0, 200);
-    try {
-      const j = await gh(cpath(DATA_PATH), { method: 'PUT', body: JSON.stringify({ message: msg + ' by ' + who(), content: b64text(JSON.stringify(S.data, null, 2)), sha: S.sha || undefined }) });
-      S.sha = j.content.sha; return;
-    } catch (e) { if (!/409|422/.test(e.message) || k === 2) throw e; }
-  }
+async function refresh() {
+  try { S.data = await api('/api/data'); render(); } catch (e) { $('list').innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
 }
-
 function render() {
   const q = $('q').value.trim().toLowerCase(), fs = $('fs').value;
   const recs = S.data.records.filter(r => (!fs || r.status === fs) && (!q || [r.topic, r.version, r.owner, r.focus, r.note].join(' ').toLowerCase().includes(q)));
-  const topics = [...new Set(S.data.records.map(r => r.topic))];
-  $('topics').innerHTML = topics.map(t => `<option value="${esc(t)}">`).join('');
-  if (!recs.length) { $('list').innerHTML = `<div class="empty">${S.data.records.length ? '没有符合的记录' : '还没有记录，点右上角新建定制'}</div>`; }
+  $('topics').innerHTML = [...new Set(S.data.records.map(r => r.topic))].map(t => `<option value="${esc(t)}">`).join('');
+  if (!recs.length) $('list').innerHTML = `<div class="empty">${S.data.records.length ? '没有符合的记录' : '还没有记录，点新建定制'}</div>`;
   else {
     const byTopic = {};
     recs.forEach(r => (byTopic[r.topic] ||= []).push(r));
     $('list').innerHTML = Object.entries(byTopic).map(([t, rs]) => `<div class="group">${esc(t)}<span>${rs.length} 版</span></div>` + rs.sort((a, b) => a.version.localeCompare(b.version, 'zh')).map(card).join('')).join('');
   }
-  $('log').innerHTML = S.data.log.slice(0, 30).map(l => `<div>${fmt(l.at)} ${esc(l.by)} ${esc(l.text)}</div>`).join('') || '<div>暂无</div>';
+  $('log').innerHTML = S.data.log.slice(0, 40).map(l => `<div>${fmt(l.at)} ${esc(l.by)} ${esc(l.text)}</div>`).join('') || '<div>暂无</div>';
 }
 function card(r) {
   const tpl = (r.template || '').charAt(0);
-  const files = (r.files || []).map((f, i) => `<div class="file"><a data-dl="${esc(r.id)}:${i}">${esc(f.name)}</a><span class="meta">${(f.size / 1048576).toFixed(1)} MB ${esc(f.by)} ${fmt(f.at)}</span><span class="x" data-rm="${esc(r.id)}:${i}">删除</span></div>`).join('');
-  return `<div class="card" data-id="${esc(r.id)}">
+  const files = (r.files || []).map(f => `<div class="file"><a href="/files/${encodeURIComponent(r.id)}/${encodeURIComponent(f.name)}">${esc(f.name)}</a><span class="meta">${(f.size / 1048576).toFixed(1)} MB ${esc(f.by)} ${fmt(f.at)}</span><span class="x" data-rm="${esc(r.id)}" data-name="${esc(f.name)}">删除</span></div>`).join('');
+  return `<div class="card">
     <div>
       <div class="t">${esc(r.version)} <span class="badge ${tpl}">${esc(r.template)}</span> <span class="pill ${esc(r.status)}">${esc(r.status)}</span></div>
       <div class="meta">负责人 ${esc(r.owner || '未定')} · 侧重 ${esc(r.focus || '无')} · 更新 ${fmt(r.updated)} ${esc(r.updatedBy || '')}</div>
@@ -182,103 +176,69 @@ function card(r) {
     </div>
   </div>`;
 }
-
-async function refresh() {
-  if (!S.token) { $('list').innerHTML = '<div class="empty">先在右上角设置里填 GitHub 令牌</div>'; $('who').textContent = ''; return; }
-  try {
-    if (!S.login) { const u = await gh('/user'); S.login = u.login; }
-    $('who').textContent = who();
-    $('repoName').textContent = S.repo;
-    await loadData(); render();
-  } catch (e) { $('list').innerHTML = `<div class="empty">读取失败：${esc(e.message)}</div>`; }
-}
-
 function openEdit(r) {
   S.editing = r ? r.id : null;
   $('eTitle').textContent = r ? '编辑定制' : '新建定制';
   $('eTopic').value = r?.topic || ''; $('eVer').value = r?.version || ''; $('eTpl').value = r?.template || 'A 彩色分栏';
-  $('eOwner').value = r?.owner || (r ? '' : who()); $('eStatus').value = r?.status || '待做'; $('eFocus').value = r?.focus || ''; $('eNote').value = r?.note || '';
+  $('eOwner').value = r ? (r.owner || '') : S.me.name; $('eStatus').value = r?.status || '待做'; $('eFocus').value = r?.focus || ''; $('eNote').value = r?.note || '';
   $('mEdit').classList.add('on'); $('eTopic').focus();
 }
 async function submitEdit() {
-  const topic = $('eTopic').value.trim(), version = $('eVer').value.trim();
-  if (!topic || !version) { toast('题目和版本不能空'); return; }
-  const v = { topic, version, template: $('eTpl').value, owner: $('eOwner').value.trim(), status: $('eStatus').value, focus: $('eFocus').value.trim(), note: $('eNote').value.trim() };
+  const v = { topic: $('eTopic').value.trim(), version: $('eVer').value.trim(), template: $('eTpl').value, owner: $('eOwner').value.trim(), status: $('eStatus').value, focus: $('eFocus').value.trim(), note: $('eNote').value.trim() };
+  if (!v.topic || !v.version) { toast('题目和版本不能空'); return; }
   $('eOk').disabled = true;
   try {
-    if (S.editing) {
-      await saveData(d => { const r = d.records.find(x => x.id === S.editing); if (r) Object.assign(r, v, { updated: now(), updatedBy: who() }); }, `改了 ${topic} ${version}`);
-    } else {
-      const id = Date.now().toString(36);
-      await saveData(d => { d.records.push({ id, ...v, files: [], created: now(), updated: now(), updatedBy: who() }); }, `新建 ${topic} ${version}`);
-    }
-    $('mEdit').classList.remove('on'); render(); toast('已保存');
-  } catch (e) { toast('保存失败 ' + e.message); }
+    if (S.editing) await api('/api/records/' + S.editing, { method: 'PUT', body: JSON.stringify(v) });
+    else await api('/api/records', { method: 'POST', body: JSON.stringify(v) });
+    $('mEdit').classList.remove('on'); await refresh(); toast('已保存');
+  } catch (e) { toast(e.message); }
   $('eOk').disabled = false;
 }
-
-async function uploadFiles(rec, list) {
-  for (const f of list) {
-    if (f.size > 95 * 1048576) { toast(f.name + ' 超过 95 MB，放不进仓库'); continue; }
-    toast('上传 ' + f.name);
-    const path = `files/${rec.topic}/${rec.version}/${f.name}`;
-    const bytes = new Uint8Array(await f.arrayBuffer());
-    const old = await gh(cpath(path));
-    await gh(cpath(path), { method: 'PUT', body: JSON.stringify({ message: `上传 ${path} by ${who()}`, content: b64(bytes), sha: old?.sha }) });
-    await saveData(d => {
-      const r = d.records.find(x => x.id === rec.id); if (!r) return;
-      r.files = (r.files || []).filter(x => x.path !== path);
-      r.files.push({ name: f.name, path, size: f.size, by: who(), at: now() });
-      r.updated = now(); r.updatedBy = who();
-    }, `上传 ${rec.version} ${f.name}`);
-  }
-  render(); toast('上传完成');
+async function uploadFiles(rid, list) {
+  const fd = new FormData();
+  let total = 0;
+  for (const f of list) { fd.append('file', f, f.name); total += f.size; }
+  if (total > 500 * 1048576) { toast('一次最多传 500 MB'); return; }
+  toast('上传中 ' + (total / 1048576).toFixed(1) + ' MB');
+  await api('/api/records/' + rid + '/files', { method: 'POST', body: fd });
+  await refresh(); toast('上传完成');
 }
-async function download(rec, i) {
-  const f = rec.files[i]; toast('下载 ' + f.name);
-  const r = await gh(cpath(f.path), {}, true);
-  const blob = await r.blob(); const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob); a.download = f.name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+async function loadMembers() {
+  const us = await api('/api/users');
+  $('members').innerHTML = us.map(u => `<div><span>${esc(u.name)} ${u.role === 'admin' ? '管理员' : ''}</span>${u.name === S.me.name ? '' : `<button class="warn" data-ru="${esc(u.name)}">删除</button>`}</div>`).join('');
 }
-async function removeFile(rec, i) {
-  const f = rec.files[i];
-  if (!confirm('删除文件 ' + f.name + '？')) return;
-  const old = await gh(cpath(f.path));
-  if (old) await gh(cpath(f.path), { method: 'DELETE', body: JSON.stringify({ message: `删除 ${f.path} by ${who()}`, sha: old.sha }) });
-  await saveData(d => { const r = d.records.find(x => x.id === rec.id); if (r) r.files = r.files.filter(x => x.path !== f.path); }, `删除 ${rec.version} ${f.name}`);
-  render();
-}
-
 document.addEventListener('click', async e => {
-  const b = e.target.closest('[data-up],[data-ed],[data-del],[data-dl],[data-rm]');
+  const b = e.target.closest('[data-up],[data-ed],[data-del],[data-rm],[data-ru]');
   if (!b) return;
   const find = id => S.data.records.find(r => r.id === id);
   try {
-    if (b.dataset.up) { S.uploadTo = find(b.dataset.up); $('fileIn').value = ''; $('fileIn').click(); }
+    if (b.dataset.up) { S.uploadTo = b.dataset.up; $('fileIn').value = ''; $('fileIn').click(); }
     else if (b.dataset.ed) openEdit(find(b.dataset.ed));
-    else if (b.dataset.del) { const r = find(b.dataset.del); if (confirm(`删除 ${r.topic} ${r.version} 的记录？仓库里的文件不会删`)) { await saveData(d => { d.records = d.records.filter(x => x.id !== r.id); }, `删除记录 ${r.topic} ${r.version}`); render(); } }
-    else if (b.dataset.dl) { const [id, i] = b.dataset.dl.split(':'); await download(find(id), +i); }
-    else if (b.dataset.rm) { const [id, i] = b.dataset.rm.split(':'); await removeFile(find(id), +i); }
-  } catch (err) { toast('失败 ' + err.message); }
+    else if (b.dataset.del) { const r = find(b.dataset.del); if (confirm(`删除 ${r.topic} ${r.version} 和它的文件？`)) { await api('/api/records/' + r.id, { method: 'DELETE' }); await refresh(); } }
+    else if (b.dataset.rm) { if (confirm('删除文件 ' + b.dataset.name + '？')) { await api('/api/records/' + b.dataset.rm + '/files/' + encodeURIComponent(b.dataset.name), { method: 'DELETE' }); await refresh(); } }
+    else if (b.dataset.ru) { if (confirm('删除成员 ' + b.dataset.ru + '？')) { await api('/api/users/' + encodeURIComponent(b.dataset.ru), { method: 'DELETE' }); await loadMembers(); } }
+  } catch (err) { toast(err.message); }
 });
 document.addEventListener('change', async e => {
   const s = e.target.closest('[data-st]'); if (!s) return;
-  const r = S.data.records.find(x => x.id === s.dataset.st);
-  try { await saveData(d => { const x = d.records.find(y => y.id === r.id); if (x) { x.status = s.value; x.updated = now(); x.updatedBy = who(); } }, `${r.topic} ${r.version} 改为${s.value}`); render(); toast('已改状态'); }
-  catch (err) { toast('失败 ' + err.message); }
+  try { await api('/api/records/' + s.dataset.st, { method: 'PUT', body: JSON.stringify({ status: s.value }) }); await refresh(); toast('已改状态'); }
+  catch (err) { toast(err.message); }
 });
-$('fileIn').addEventListener('change', async () => { if (S.uploadTo && $('fileIn').files.length) { try { await uploadFiles(S.uploadTo, [...$('fileIn').files]); } catch (err) { toast('上传失败 ' + err.message); } } });
-$('btnSet').onclick = () => { $('sToken').value = S.token; $('sRepo').value = S.repo; $('sName').value = S.name; $('mSet').classList.add('on'); };
-$('sCancel').onclick = () => $('mSet').classList.remove('on');
-$('sOk').onclick = () => { S.token = $('sToken').value.trim(); S.repo = $('sRepo').value.trim() || S.repo; S.name = $('sName').value.trim(); S.login = '';
-  localStorage.setItem('dz_token', S.token); localStorage.setItem('dz_repo', S.repo); localStorage.setItem('dz_name', S.name); $('mSet').classList.remove('on'); refresh(); };
+$('fileIn').addEventListener('change', async () => { if (S.uploadTo && $('fileIn').files.length) { try { await uploadFiles(S.uploadTo, [...$('fileIn').files]); } catch (err) { toast(err.message); } } });
+$('lOk').onclick = async () => { try { await api('/api/login', { method: 'POST', body: JSON.stringify({ name: $('lName').value.trim(), password: $('lPwd').value }) }); $('lPwd').value = ''; await boot(); } catch (e) { toast(e.message); } };
+$('lPwd').addEventListener('keydown', e => { if (e.key === 'Enter') $('lOk').click(); });
+$('btnOut').onclick = async () => { await api('/api/logout', { method: 'POST', body: '{}' }); showLogin(); };
+$('btnSet').onclick = async () => { $('pOld').value = ''; $('pNew').value = ''; $('adminBox').hidden = S.me.role !== 'admin'; if (S.me.role === 'admin') await loadMembers(); $('mSet').classList.add('on'); };
+$('sClose').onclick = () => $('mSet').classList.remove('on');
+$('pOk').onclick = async () => { try { await api('/api/password', { method: 'POST', body: JSON.stringify({ old: $('pOld').value, new: $('pNew').value }) }); toast('密码已改'); $('pOld').value = ''; $('pNew').value = ''; } catch (e) { toast(e.message); } };
+$('uOk').onclick = async () => { try { await api('/api/users', { method: 'POST', body: JSON.stringify({ name: $('uName').value.trim(), password: $('uPwd').value }) }); $('uName').value = ''; $('uPwd').value = ''; await loadMembers(); toast('已加成员'); } catch (e) { toast(e.message); } };
 $('btnNew').onclick = () => openEdit(null);
 $('eCancel').onclick = () => $('mEdit').classList.remove('on');
 $('eOk').onclick = submitEdit;
 $('btnReload').onclick = refresh;
 $('q').oninput = render; $('fs').onchange = render;
-document.querySelectorAll('.mask').forEach(m => m.addEventListener('click', e => { if (e.target === m) m.classList.remove('on'); }));
-refresh();
+document.querySelectorAll('.mask:not(#mLogin)').forEach(m => m.addEventListener('click', e => { if (e.target === m) m.classList.remove('on'); }));
+boot();
 </script>
 </body>
 </html>
