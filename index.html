@@ -104,6 +104,30 @@ table.trash td.k{width:70px;color:var(--mute)}
 table.trash td.w{width:120px;font-weight:600}
 table.trash td.t{width:170px;color:var(--mute)}
 table.trash td.a{width:200px}
+/* 文件库 */
+.crumb{display:flex;align-items:center;gap:6px;margin-bottom:14px;font-size:14px}
+.crumb a{color:var(--mute);cursor:pointer}
+.crumb a:hover{color:var(--acc)}
+.crumb b{color:var(--ink)}
+.crumb .sp{color:#b6c0cf}
+.libbar{display:flex;gap:8px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px}
+.tile{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;cursor:pointer;position:relative;min-height:112px;display:flex;flex-direction:column;gap:6px;transition:.12s}
+.tile:hover{border-color:#c9d2df;box-shadow:0 8px 20px -14px rgba(15,23,42,.35)}
+.tile .ic{width:40px;height:32px;border-radius:6px;position:relative}
+.tile.dir .ic{background:linear-gradient(180deg,#ffd35c,#f5b91e);border-radius:4px 6px 6px 6px}
+.tile.dir .ic::before{content:"";position:absolute;left:0;top:-6px;width:18px;height:8px;background:#f5b91e;border-radius:3px 3px 0 0}
+.tile.f .ic{background:#eef2f8;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:var(--mute);width:32px;height:38px;border-radius:5px}
+.tile.f.pdf .ic{color:#d64545;border-color:#f3c4c4;background:#fff5f5}
+.tile.f.zip .ic{color:#8a5a12;border-color:#f0dcb0;background:#fff9ea}
+.tile.f.tex .ic,.tile.f.py .ic{color:var(--acc);border-color:#c7d8fb;background:#f2f6ff}
+.tile .nm{font-weight:600;word-break:break-all;line-height:1.35}
+.tile .mt{font-size:12px;color:var(--mute);margin-top:auto}
+.tile .ops{position:absolute;top:8px;right:8px;display:none;gap:4px}
+.tile:hover .ops{display:flex}
+.tile .ops span{font-size:12px;padding:2px 7px;border-radius:6px;background:#fff;border:1px solid var(--line);color:var(--acc)}
+.tile .ops span.x{color:var(--red)}
+.zipbox{grid-column:1/-1;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 16px}
 /* 登录 */
 .mask{position:fixed;inset:0;background:radial-gradient(1200px 600px at 20% -10%,#1b2a4d 0%,var(--navy) 55%);display:none;align-items:center;justify-content:center;z-index:9}
 .mask.on{display:flex}
@@ -126,6 +150,8 @@ table.trash td.a{width:200px}
   <div class="sep"></div>
   <button class="tab" data-t="S"><span class="k">Σ</span>汇总</button>
   <button class="tab" data-t="T"><span class="k">↺</span>回收站<span class="cnt" id="tcnt" hidden></span></button>
+  <div class="sep"></div>
+  <button class="tab" data-t="L"><span class="k">▤</span>文件库</button>
   <div class="me" id="me" hidden><span class="av" id="av"></span><span class="nm" id="who"></span><button id="btnOut">退出</button></div>
 </aside>
 <main>
@@ -143,12 +169,14 @@ table.trash td.a{width:200px}
 
 <input type="file" id="fileIn" multiple hidden>
 <input type="file" id="proofIn" accept="image/*" hidden>
+<input type="file" id="libIn" multiple hidden>
 <div id="toast"></div>
 
 <script>
 const S = { me: '', topic: localStorage.getItem('dz_topic') || 'A', records: [], trash: [], uploadTo: null, closed: new Set(), zips: {}, proofFor: null };
 const FLAGS = [['deposit', '定金', '已付定金'], ['paid', '结账', '已结账'], ['done', '完成', '已完成']];
-const TITLES = { A: 'A 题', B: 'B 题', C: 'C 题', S: '汇总', T: '回收站' };
+const TITLES = { A: 'A 题', B: 'B 题', C: 'C 题', S: '汇总', T: '回收站', L: '文件库' };
+S.libPath = ''; S.lib = null; S.libZip = null;
 const money = n => (Math.round((n || 0) * 100) / 100).toLocaleString('zh-CN');
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -227,7 +255,9 @@ function renderTrash() {
   $('sub').textContent = S.trash.length ? `${S.trash.length} 项` : '';
   if (!S.trash.length) { $('list').innerHTML = '<div class="empty">回收站是空的</div>'; return; }
   const acts = t => `<td class="a"><button class="sm" data-restore="${t.id}">恢复</button> <button class="sm warn" data-purge="${t.id}">彻底删除</button></td>`;
-  const row = t => t.kind === 'row'
+  const row = t => t.kind === 'lib'
+    ? `<tr><td class="k">文件库</td><td class="w">${esc(t.path.split('/')[0])}</td><td>${esc(t.path)}${t.isdir ? ' （文件夹）' : ' <span class="sz">' + mb(t.size) + '</span>'}</td><td class="t">${esc(t.by)} ${when(t.at)}</td>${acts(t)}</tr>`
+    : t.kind === 'row'
     ? `<tr><td class="k">客户</td><td class="w">${t.rec.topic} 题 ${t.rec.seq} 号</td><td>${esc(t.rec.note || '')}${t.rec.price ? ' · ' + money(t.rec.price) : ''}${(t.rec.files || []).length ? ' · ' + t.rec.files.length + ' 个文件' : ''}</td><td class="t">${esc(t.by)} ${when(t.at)}</td>${acts(t)}</tr>`
     : `<tr><td class="k">文件</td><td class="w">${t.topic} 题 ${t.seq} 号</td><td>${esc(t.file.name)} <span class="sz">${mb(t.file.size)}</span></td><td class="t">${esc(t.by)} ${when(t.at)}</td>${acts(t)}</tr>`;
   $('list').innerHTML = `<table class="trash"><tr><th></th><th>位置</th><th>内容</th><th>删除</th><th class="a"></th></tr>${S.trash.map(row).join('')}</table>`;
@@ -242,12 +272,33 @@ function tick() {
   $('left').innerHTML = `距国赛截止 9 月 13 日 20:00 还有 <b>${d}</b> 天 <b>${h}</b> 时 <b>${m}</b> 分`;
 }
 setInterval(tick, 1000); tick();
+async function loadLib() {
+  try { S.lib = await api('api/lib?path=' + encodeURIComponent(S.libPath)); } catch (e) { S.libPath = ''; S.lib = await api('api/lib?path='); }
+  renderLib();
+}
+function renderLib() {
+  const d = S.lib; if (!d) { $('list').innerHTML = ''; return; }
+  const parts = d.path ? d.path.split('/') : [];
+  $('sub').textContent = `${d.dirs.length} 个文件夹 · ${d.files.length} 个文件`;
+  const crumb = `<div class="crumb"><a data-go="">文件库</a>${parts.map((p, i) => `<span class="sp">/</span>${i === parts.length - 1 ? `<b>${esc(p)}</b>` : `<a data-go="${esc(parts.slice(0, i + 1).join('/'))}">${esc(p)}</a>`}`).join('')}
+    <span style="flex:1"></span><div class="libbar">${d.path ? `<button class="sm" id="libUp">上传到这里</button><button class="sm" id="libMk">新建文件夹</button>` : ''}</div></div>`;
+  const dirTile = x => { const p = d.path ? d.path + '/' + x.name : x.name; return `<div class="tile dir" data-go="${esc(p)}"><div class="ic"></div><div class="nm">${esc(x.name)}</div><div class="mt">${x.count} 项</div>${parts.length ? `<div class="ops"><span class="x" data-ldel="${esc(p)}">删除</span></div>` : ''}</div>`; };
+  const fileTile = x => {
+    const p = d.path + '/' + x.name, ext = (x.name.split('.').pop() || '').toLowerCase(), url = 'lib/' + enc(p);
+    const kind = ['pdf', 'zip', 'tex', 'py'].includes(ext) ? ext : '';
+    return `<div class="tile f ${kind}" data-open="${esc(p)}"><div class="ic">${esc(ext.slice(0, 4).toUpperCase() || '文件')}</div><div class="nm">${esc(x.name)}</div><div class="mt">${mb(x.size)} · ${when(x.at)}</div>
+      <div class="ops"><a href="${url}" onclick="event.stopPropagation()"><span>下载</span></a>${ext === 'zip' ? `<span data-lzip="${esc(p)}">查看</span>` : ''}<span class="x" data-ldel="${esc(p)}">删除</span></div></div>`;
+  };
+  const zipBox = S.libZip && S.libZip.path.startsWith(d.path + '/') ? `<div class="zipbox"><b>${esc(S.libZip.path.split('/').pop())}</b>${S.libZip.entries.map(e => `<div class="file"><a class="nm" href="lib/${enc(S.libZip.path)}?entry=${encodeURIComponent(e.name)}" ${PREVIEW.test(e.name) ? 'target="_blank"' : ''}>${esc(e.name)}</a><span class="sz">${mb(e.size)}</span></div>`).join('') || '<div class="sz">空的</div>'}</div>` : '';
+  $('list').innerHTML = crumb + `<div class="grid">${d.dirs.map(dirTile).join('')}${d.files.map(fileTile).join('')}${zipBox}</div>` + (!d.dirs.length && !d.files.length ? '<div class="empty" style="margin-top:12px">这个文件夹是空的</div>' : '');
+}
 function render() {
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t.dataset.t === S.topic));
   for (const k of ['A', 'B', 'C']) { const c = S.records.filter(r => r.topic === k && !r.done).length; $('c' + k).hidden = !c; $('c' + k).textContent = c; }
   $('tcnt').hidden = !S.trash.length; $('tcnt').textContent = S.trash.length;
   $('title').textContent = TITLES[S.topic];
-  $('add').hidden = !S.me || S.topic === 'S' || S.topic === 'T';
+  $('add').hidden = !S.me || S.topic !== 'A' && S.topic !== 'B' && S.topic !== 'C';
+  if (S.topic === 'L') return loadLib();
   if (S.topic === 'S') return renderSummary();
   if (S.topic === 'T') return renderTrash();
   const rows = S.records.filter(r => r.topic === S.topic);
@@ -274,7 +325,19 @@ async function upload(rid, list) {
   try { await api('api/records/' + rid + '/files', { method: 'POST', body: fd }); await refresh(); toast('已上传'); } catch (err) { toast(err.message); }
 }
 document.addEventListener('click', async e => {
-  const t = e.target.closest('.tab'); if (t) { S.topic = t.dataset.t; localStorage.setItem('dz_topic', S.topic); render(); return; }
+  const t = e.target.closest('.tab'); if (t) { S.topic = t.dataset.t; localStorage.setItem('dz_topic', S.topic); refresh(); return; }
+  if (e.target.closest('#libUp')) { $('libIn').value = ''; $('libIn').click(); return; }
+  if (e.target.closest('#libMk')) { const name = prompt('文件夹名字'); if (name && name.trim()) { try { await api('api/lib/mkdir', { method: 'POST', body: JSON.stringify({ path: S.libPath, name: name.trim() }) }); await loadLib(); } catch (err) { toast(err.message); } } return; }
+  const lb = e.target.closest('[data-ldel],[data-lzip],[data-go],[data-open]');
+  if (lb) {
+    try {
+      if (lb.dataset.ldel !== undefined) { e.stopPropagation(); await api('api/lib?path=' + encodeURIComponent(lb.dataset.ldel), { method: 'DELETE' }); await refresh(); toast('已放进回收站'); }
+      else if (lb.dataset.lzip !== undefined) { e.stopPropagation(); S.libZip = S.libZip && S.libZip.path === lb.dataset.lzip ? null : { path: lb.dataset.lzip, entries: (await api('api/lib/zip?path=' + encodeURIComponent(lb.dataset.lzip))).entries }; renderLib(); }
+      else if (lb.dataset.go !== undefined) { S.libPath = lb.dataset.go; S.libZip = null; await loadLib(); }
+      else if (lb.dataset.open !== undefined) { const p = lb.dataset.open; window.open('lib/' + enc(p) + (PREVIEW.test(p) ? '?inline=1' : ''), PREVIEW.test(p) ? '_blank' : '_self'); }
+    } catch (err) { toast(err.message); }
+    return;
+  }
   const b = e.target.closest('[data-up],[data-del],[data-rm],[data-rmdir],[data-flag],[data-zip],[data-restore],[data-purge]'); if (!b) return;
   const find = id => S.records.find(r => r.id === id);
   try {
@@ -309,6 +372,14 @@ $('proofIn').addEventListener('change', async () => {
   const fd = new FormData(); fd.append('file', f, f.name);
   toast('上传凭证');
   try { await api('api/records/' + S.proofFor.rid + '/proof/' + S.proofFor.k, { method: 'POST', body: fd }); await refresh(); } catch (err) { toast(err.message); }
+});
+$('libIn').addEventListener('change', async () => {
+  const list = [...$('libIn').files]; if (!list.length) return;
+  const fd = new FormData(); let total = 0;
+  for (const f of list) { fd.append('file', f, f.name); total += f.size; }
+  if (total > 500 * 1048576) { toast('一次最多传 500 MB'); return; }
+  toast('上传中 ' + mb(total));
+  try { await api('api/lib/upload?path=' + encodeURIComponent(S.libPath), { method: 'POST', body: fd }); await loadLib(); toast('已上传'); } catch (err) { toast(err.message); }
 });
 $('fileIn').addEventListener('change', () => { if (S.uploadTo && $('fileIn').files.length) upload(S.uploadTo, [...$('fileIn').files]); });
 $('aOk').onclick = async () => { try { await api('api/records', { method: 'POST', body: JSON.stringify({ topic: S.topic }) }); await refresh(); } catch (e) { toast(e.message); } };

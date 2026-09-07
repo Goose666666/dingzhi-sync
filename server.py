@@ -26,6 +26,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.join(HERE, "data")
 FILES = os.path.join(os.path.dirname(HERE), "定制文件")   # 服务器上就是 /data1/liutianrui/定制文件
+LIB = os.path.join(os.path.dirname(HERE), "文件库")        # 原稿、定制稿、代码
+LIB_TOP = ("原稿", "定制稿", "代码")
 INDEX = os.path.join(HERE, "index.html")
 PREFIX = "/dz"
 USERS = ("ltr", "qyh", "zjl")
@@ -70,6 +72,16 @@ def safe_rel(path):
     """带子目录的相对路径，去掉 .. 和空段，统一用 / 连。"""
     parts = [safe_name(p) for p in path.replace("\\", "/").split("/") if p.strip() and p.strip() not in (".", "..")]
     return "/".join(parts) or "未命名"
+
+
+def lib_path(rel):
+    rel = safe_rel(rel) if rel else ""
+    if rel == "未命名":
+        rel = ""
+    parts = [p for p in rel.split("/") if p]
+    if any(p.startswith(".") for p in parts):
+        return None, rel
+    return os.path.join(LIB, *parts) if parts else LIB, "/".join(parts)
 
 
 def zip_name(info):
@@ -184,6 +196,51 @@ class Handler(BaseHTTPRequestHandler):
             ctype = inline_type(base) if q.get("inline") else None
             return self.send_file(fp, ctype or mimetypes.guess_type(fp)[0] or "application/octet-stream",
                                   download=None if ctype else base)
+        if path == "/api/lib":
+            if not self.need_user():
+                return
+            fp, rel = lib_path(urllib.parse.unquote(q.get("path", [""])[0]))
+            if fp is None or not os.path.isdir(fp):
+                return self.fail("没有这个目录", 404)
+            dirs, files = [], []
+            for name in sorted(os.listdir(fp)):
+                if name.startswith("."):
+                    continue
+                full = os.path.join(fp, name)
+                if os.path.isdir(full):
+                    cnt = sum(1 for x in os.listdir(full) if not x.startswith("."))
+                    dirs.append({"name": name, "count": cnt})
+                else:
+                    st = os.stat(full)
+                    files.append({"name": name, "size": st.st_size, "at": time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime(st.st_mtime))})
+            if not rel:
+                dirs.sort(key=lambda x: LIB_TOP.index(x["name"]) if x["name"] in LIB_TOP else 99)
+            return self.send_json({"path": rel, "dirs": dirs, "files": files})
+        if path == "/api/lib/zip":
+            if not self.need_user():
+                return
+            fp, rel = lib_path(urllib.parse.unquote(q.get("path", [""])[0]))
+            if fp is None or not os.path.isfile(fp):
+                return self.fail("文件不存在", 404)
+            try:
+                with zipfile.ZipFile(fp) as z:
+                    items = [{"name": zip_name(i), "size": i.file_size} for i in z.infolist() if not i.is_dir()]
+            except zipfile.BadZipFile:
+                return self.fail("不是 zip 文件")
+            return self.send_json({"entries": items})
+        if path.startswith("/lib/"):
+            if not self.need_user():
+                return
+            fp, rel = lib_path(urllib.parse.unquote(path[5:]))
+            if fp is None or not os.path.isfile(fp):
+                return self.fail("文件不存在", 404)
+            entry = q.get("entry", [""])[0]
+            if entry:
+                return self.send_zip_entry(fp, entry)
+            base = rel.split("/")[-1]
+            ctype = inline_type(base) if q.get("inline") else None
+            return self.send_file(fp, ctype or mimetypes.guess_type(fp)[0] or "application/octet-stream",
+                                  download=None if ctype else base)
         m = path.split("/")
         if len(m) == 5 and m[1:3] == ["api", "records"] and m[4] == "zip":
             if not self.need_user():
@@ -280,6 +337,37 @@ class Handler(BaseHTTPRequestHandler):
             return self.upload(m[3], u, proof=m[5])
         if len(m) == 5 and m[1:3] == ["api", "trash"] and m[4] == "restore":
             return self.restore(m[3], u)
+        q = urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query)
+        if path == "/api/lib/mkdir":
+            b = self.body_json()
+            fp, rel = lib_path(str(b.get("path", "")))
+            name = safe_name(str(b.get("name", "")))
+            if fp is None or not os.path.isdir(fp) or name.startswith("."):
+                return self.fail("目录不对")
+            os.makedirs(os.path.join(fp, name), exist_ok=True)
+            return self.send_json({})
+        if path == "/api/lib/upload":
+            fp, rel = lib_path(urllib.parse.unquote(q.get("path", [""])[0]))
+            if fp is None or not os.path.isdir(fp):
+                return self.fail("目录不对")
+            n = int(self.headers.get("Content-Length") or 0)
+            if n > MAX_UPLOAD:
+                return self.fail("一次最多传 500 MB", 413)
+            if shutil.disk_usage(LIB).free - n < MIN_FREE:
+                return self.fail("服务器磁盘快满了", 507)
+            ctype = self.headers.get("Content-Type") or ""
+            if "multipart/form-data" not in ctype:
+                return self.fail("要用 multipart 上传")
+            body = self.rfile.read(n)
+            names = []
+            for fname, data in parse_multipart(ctype, body):
+                if not fname:
+                    continue
+                name = safe_name(fname)
+                with open(os.path.join(fp, name), "wb") as f:
+                    f.write(data)
+                names.append(name)
+            return self.send_json({"files": names})
         self.fail("没有这个地址", 404)
 
     def do_PUT(self):
@@ -365,6 +453,20 @@ class Handler(BaseHTTPRequestHandler):
                 r["updated"], r["updatedBy"] = now(), u
             self.mutate(g)
             return self.send_json({})
+        if m[1:3] == ["api", "lib"] and len(m) == 3:
+            q = urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query)
+            fp, rel = lib_path(urllib.parse.unquote(q.get("path", [""])[0]))
+            if fp is None or not rel or rel in LIB_TOP or not os.path.exists(fp):
+                return self.fail("不能删这个")
+            tid = secrets.token_hex(4)
+            dst = os.path.join(LIB, ".回收站", tid, rel.split("/")[-1])
+            os.makedirs(os.path.dirname(dst), exist_ok=True)
+            isdir = os.path.isdir(fp)
+            size = os.path.getsize(fp) if not isdir else 0
+            os.replace(fp, dst)
+            self.mutate(lambda d: d["trash"].insert(0, {"id": tid, "kind": "lib", "at": now(), "by": u, "path": rel,
+                                                         "isdir": isdir, "size": size}))
+            return self.send_json({})
         if len(m) == 4 and m[1:3] == ["api", "trash"]:
             def h(d):
                 t = next((x for x in d["trash"] if x["id"] == m[3]), None)
@@ -372,6 +474,8 @@ class Handler(BaseHTTPRequestHandler):
                     return
                 if t["kind"] == "row":
                     shutil.rmtree(folder_of(t["rec"]), ignore_errors=True)
+                elif t["kind"] == "lib":
+                    shutil.rmtree(os.path.join(LIB, ".回收站", t["id"]), ignore_errors=True)
                 else:
                     fp = os.path.join(FILES, t["topic"] + "题", str(t["seq"]), ".回收站", *t["file"]["name"].split("/"))
                     if os.path.exists(fp):
@@ -393,6 +497,16 @@ class Handler(BaseHTTPRequestHandler):
                 r = t["rec"]
                 r["updated"], r["updatedBy"] = now(), u
                 d["records"].append(r)
+            elif t["kind"] == "lib":
+                src = os.path.join(LIB, ".回收站", t["id"], t["path"].split("/")[-1])
+                dst = os.path.join(LIB, *t["path"].split("/"))
+                os.makedirs(os.path.dirname(dst), exist_ok=True)
+                if os.path.exists(dst):
+                    stem, ext = os.path.splitext(dst)
+                    dst = stem + "-恢复" + ext
+                if os.path.exists(src):
+                    os.replace(src, dst)
+                shutil.rmtree(os.path.join(LIB, ".回收站", t["id"]), ignore_errors=True)
             else:
                 r = next((x for x in d["records"] if x["id"] == t["rid"]), None)
                 if not r:
@@ -470,6 +584,8 @@ def main():
     a = ap.parse_args()
     os.makedirs(FILES, exist_ok=True)
     os.makedirs(DATA, exist_ok=True)
+    for top in LIB_TOP:
+        os.makedirs(os.path.join(LIB, top), exist_ok=True)
     if not os.path.exists(os.path.join(DATA, "records.json")):
         save("records.json", {"records": []})
     print("定制协作平台 http://%s:%d" % (a.host, a.port))
