@@ -193,10 +193,27 @@ table.trash td.a{width:200px}
 <div id="toast"></div>
 
 <script>
-const S = { me: '', topic: localStorage.getItem('dz_topic') || 'A', records: [], trash: [], uploadTo: null, closed: new Set(), zips: {}, proofFor: null };
+const S = { me: '', topic: 'A', records: [], trash: [], uploadTo: null, closed: new Set(), zips: {}, proofFor: null };
+function readHash() {
+  const h = decodeURIComponent(location.hash.slice(1));
+  const m = h.match(/^([ABCSTL])(?:\/(.*))?$/);
+  if (m) { S.topic = m[1]; S.libPath = m[1] === 'L' ? (m[2] || '') : ''; }
+  else { S.topic = localStorage.getItem('dz_topic') || 'A'; S.libPath = ''; }
+}
+function hashOf() { return '#' + S.topic + (S.topic === 'L' && S.libPath ? '/' + S.libPath : ''); }
+function go(topic, libPath) {
+  S.topic = topic; if (libPath !== undefined) S.libPath = libPath; S.libZip = null;
+  localStorage.setItem('dz_topic', topic);
+  if (location.hash !== hashOf()) history.pushState({ h: hashOf() }, '', hashOf());
+  refresh();
+}
+window.addEventListener('popstate', () => {
+  if (S.pick) { S.pick = null; $('mPick').classList.remove('on'); return; }
+  readHash(); refresh();
+});
 const FLAGS = [['deposit', '定金', '已付定金'], ['paid', '结账', '已结账'], ['done', '完成', '已完成']];
 const TITLES = { A: 'A 题', B: 'B 题', C: 'C 题', S: '汇总', T: '回收站', L: '文件库' };
-S.libPath = ''; S.lib = null; S.libZip = null;
+S.libPath = ''; S.lib = null; S.libZip = null; readHash(); history.replaceState({ h: hashOf() }, '', hashOf());
 const money = n => (Math.round((n || 0) * 100) / 100).toLocaleString('zh-CN');
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -293,7 +310,7 @@ function tick() {
 }
 setInterval(tick, 1000); tick();
 async function loadLib() {
-  try { S.lib = await api('api/lib?path=' + encodeURIComponent(S.libPath)); } catch (e) { S.libPath = ''; S.lib = await api('api/lib?path='); }
+  try { S.lib = await api('api/lib?path=' + encodeURIComponent(S.libPath)); } catch (e) { S.libPath = ''; S.lib = await api('api/lib?path='); history.replaceState({ h: hashOf() }, '', hashOf()); }
   renderLib();
 }
 function renderLib() {
@@ -317,8 +334,10 @@ S.pick = null;
 async function openPick(rid) {
   S.pick = { rid, path: '', sel: new Map() };
   $('mPick').classList.add('on');
+  history.pushState({ h: hashOf(), pick: 1 }, '', hashOf());
   await loadPick();
 }
+function closePick() { S.pick = null; $('mPick').classList.remove('on'); if (history.state && history.state.pick) history.back(); }
 async function loadPick() {
   const d = await api('api/lib?path=' + encodeURIComponent(S.pick.path));
   const parts = d.path ? d.path.split('/') : [];
@@ -360,7 +379,7 @@ async function upload(rid, list) {
   try { await api('api/records/' + rid + '/files', { method: 'POST', body: fd }); await refresh(); toast('已上传'); } catch (err) { toast(err.message); }
 }
 document.addEventListener('click', async e => {
-  const t = e.target.closest('.tab'); if (t) { S.topic = t.dataset.t; localStorage.setItem('dz_topic', S.topic); refresh(); return; }
+  const t = e.target.closest('.tab'); if (t) { go(t.dataset.t); return; }
   if (e.target.closest('#libUp')) { $('libIn').value = ''; $('libIn').click(); return; }
   if (e.target.closest('#libUpDir')) { $('libDirIn').value = ''; $('libDirIn').click(); return; }
   if (e.target.closest('#libMk')) { const name = prompt('文件夹名字'); if (name && name.trim()) { try { await api('api/lib/mkdir', { method: 'POST', body: JSON.stringify({ path: S.libPath, name: name.trim() }) }); await loadLib(); } catch (err) { toast(err.message); } } return; }
@@ -369,7 +388,7 @@ document.addEventListener('click', async e => {
     try {
       if (lb.dataset.ldel !== undefined) { e.stopPropagation(); await api('api/lib?path=' + encodeURIComponent(lb.dataset.ldel), { method: 'DELETE' }); await refresh(); toast('已放进回收站'); }
       else if (lb.dataset.lzip !== undefined) { e.stopPropagation(); S.libZip = S.libZip && S.libZip.path === lb.dataset.lzip ? null : { path: lb.dataset.lzip, entries: (await api('api/lib/zip?path=' + encodeURIComponent(lb.dataset.lzip))).entries }; renderLib(); }
-      else if (lb.dataset.go !== undefined) { S.libPath = lb.dataset.go; S.libZip = null; await loadLib(); }
+      else if (lb.dataset.go !== undefined) { go('L', lb.dataset.go); }
       else if (lb.dataset.open !== undefined) { const p = lb.dataset.open; window.open('lib/' + enc(p) + (PREVIEW.test(p) ? '?inline=1' : ''), PREVIEW.test(p) ? '_blank' : '_self'); }
     } catch (err) { toast(err.message); }
     return;
@@ -378,10 +397,10 @@ document.addEventListener('click', async e => {
     if (e.target.matches('[data-psel]')) return;
     const g = e.target.closest('[data-pgo]'); if (g) { e.preventDefault(); S.pick.path = g.dataset.pgo; await loadPick(); return; }
     const tg = e.target.closest('[data-ptog]'); if (tg) { const ck = tg.querySelector('[data-psel]'); ck.checked = !ck.checked; ck.dispatchEvent(new Event('change', { bubbles: true })); return; }
-    if (e.target.id === 'pkCancel' || e.target === $('mPick')) { S.pick = null; $('mPick').classList.remove('on'); return; }
+    if (e.target.id === 'pkCancel' || e.target === $('mPick')) { closePick(); return; }
     if (e.target.id === 'pkOk') {
       const paths = [...S.pick.sel.keys()]; if (!paths.length) { toast('先勾选'); return; }
-      try { const j = await api('api/records/' + S.pick.rid + '/fromlib', { method: 'POST', body: JSON.stringify({ paths }) }); S.pick = null; $('mPick').classList.remove('on'); await refresh(); toast('放进来 ' + j.files.length + ' 个文件'); } catch (err) { toast(err.message); }
+      try { const j = await api('api/records/' + S.pick.rid + '/fromlib', { method: 'POST', body: JSON.stringify({ paths }) }); closePick(); await refresh(); toast('放进来 ' + j.files.length + ' 个文件'); } catch (err) { toast(err.message); }
       return;
     }
   }
