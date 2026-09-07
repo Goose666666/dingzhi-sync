@@ -127,6 +127,16 @@ table.trash td.a{width:200px}
 .tile:hover .ops{display:flex}
 .tile .ops span{font-size:12px;padding:2px 7px;border-radius:6px;background:#fff;border:1px solid var(--line);color:var(--acc)}
 .tile .ops span.x{color:var(--red)}
+.tile .ops span.ok{color:var(--ok)}
+/* 定制稿：审核状态 */
+.zone{display:flex;align-items:center;gap:10px;margin:22px 0 10px;font-weight:700;font-size:15px}
+.zone.first{margin-top:0}
+.zone .n{font-size:12px;padding:1px 9px;border-radius:999px;color:#fff;line-height:18px}
+.zone.todo{color:#9a5b05}.zone.todo .n{background:var(--amber)}
+.zone.done{color:#0b6e4e}.zone.done .n{background:var(--ok)}
+.tile.rv0{background:#fffaf0;border-color:#f1dcb6}.tile.rv0 .ic{background:linear-gradient(180deg,#f7c76a,#e39a1f)}.tile.rv0 .ic::before{background:#e39a1f}
+.tile.rv1{background:#f2fbf6;border-color:#bfe4d1}.tile.rv1 .ic{background:linear-gradient(180deg,#5ecb9d,#149a67)}.tile.rv1 .ic::before{background:#149a67}
+.tile .rv{font-size:12px;font-weight:600}.tile.rv0 .rv{color:var(--amber)}.tile.rv1 .rv{color:var(--ok)}
 .zipbox{grid-column:1/-1;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 16px}
 /* 从文件库选 */
 .mask.pick{background:rgba(15,23,42,.45)}
@@ -320,7 +330,13 @@ function renderLib() {
   const crumb = `<div class="crumb"><a data-go="">文件库</a>${parts.map((p, i) => `<span class="sp">/</span>${i === parts.length - 1 ? `<b>${esc(p)}</b>` : `<a data-go="${esc(parts.slice(0, i + 1).join('/'))}">${esc(p)}</a>`}`).join('')}
     <span style="flex:1"></span><div class="libbar">${d.path ? `<button class="sm" id="libUp">上传文件</button><button class="sm" id="libUpDir">上传文件夹</button><button class="sm" id="libMk">新建文件夹</button>` : ''}</div></div>`;
   const FIXED = ['原稿', '定制稿', '代码'].flatMap(k => ['A', 'B', 'C'].map(x => k + '/' + x + '题'));
-  const dirTile = x => { const p = d.path ? d.path + '/' + x.name : x.name; return `<div class="tile dir" data-go="${esc(p)}"><div class="ic"></div><div class="nm">${esc(x.name)}</div><div class="mt">${x.count} 项</div>${parts.length && !FIXED.includes(p) ? `<div class="ops"><span class="x" data-ldel="${esc(p)}">删除</span></div>` : ''}</div>`; };
+  const RV = /^定制稿\/[ABC]题$/.test(d.path);
+  const dirTile = x => {
+    const p = d.path ? d.path + '/' + x.name : x.name;
+    const rvLine = RV ? `<div class="rv">${x.review ? '已审核 ' + when(x.review.at) + ' · ' + esc(x.review.by) : '未审核'}</div>` : '';
+    const rvOp = RV ? `<span class="${x.review ? '' : 'ok'}" data-rv="${esc(p)}" data-on="${x.review ? 0 : 1}">${x.review ? '撤销审核' : '确认审核'}</span>` : '';
+    return `<div class="tile dir ${RV ? (x.review ? 'rv1' : 'rv0') : ''}" data-go="${esc(p)}"><div class="ic"></div><div class="nm">${esc(x.name)}</div>${rvLine}<div class="mt">${x.count} 项</div>${parts.length && !FIXED.includes(p) ? `<div class="ops">${rvOp}<span class="x" data-ldel="${esc(p)}">删除</span></div>` : ''}</div>`;
+  };
   const fileTile = x => {
     const p = d.path + '/' + x.name, ext = (x.name.split('.').pop() || '').toLowerCase(), url = 'lib/' + enc(p);
     const kind = ['pdf', 'zip', 'tex', 'py'].includes(ext) ? ext : '';
@@ -328,7 +344,17 @@ function renderLib() {
       <div class="ops"><a href="${url}" onclick="event.stopPropagation()"><span>下载</span></a>${ext === 'zip' ? `<span data-lzip="${esc(p)}">查看</span>` : ''}<span class="x" data-ldel="${esc(p)}">删除</span></div></div>`;
   };
   const zipBox = S.libZip && S.libZip.path.startsWith(d.path + '/') ? `<div class="zipbox"><b>${esc(S.libZip.path.split('/').pop())}</b>${S.libZip.entries.map(e => `<div class="file"><a class="nm" href="lib/${enc(S.libZip.path)}?entry=${encodeURIComponent(e.name)}" ${PREVIEW.test(e.name) ? 'target="_blank"' : ''}>${esc(e.name)}</a><span class="sz">${mb(e.size)}</span></div>`).join('') || '<div class="sz">空的</div>'}</div>` : '';
-  $('list').innerHTML = crumb + `<div class="grid">${d.dirs.map(dirTile).join('')}${d.files.map(fileTile).join('')}${zipBox}</div>` + (!d.dirs.length && !d.files.length ? '<div class="empty" style="margin-top:12px">这个文件夹是空的</div>' : '');
+  let body;
+  if (RV) {
+    const todo = d.dirs.filter(x => !x.review), done = d.dirs.filter(x => x.review);
+    $('sub').textContent = `${todo.length} 份未审核 · ${done.length} 份已审核`;
+    body = `<div class="zone todo first">未审核<span class="n">${todo.length}</span></div><div class="grid">${todo.map(dirTile).join('')}</div>
+      <div class="zone done">已审核<span class="n">${done.length}</span></div><div class="grid">${done.map(dirTile).join('')}</div>`
+      + (d.files.length || zipBox ? `<div class="grid" style="margin-top:22px">${d.files.map(fileTile).join('')}${zipBox}</div>` : '');
+  } else {
+    body = `<div class="grid">${d.dirs.map(dirTile).join('')}${d.files.map(fileTile).join('')}${zipBox}</div>` + (!d.dirs.length && !d.files.length ? '<div class="empty" style="margin-top:12px">这个文件夹是空的</div>' : '');
+  }
+  $('list').innerHTML = crumb + body;
 }
 S.pick = null;
 async function openPick(rid) {
@@ -383,10 +409,11 @@ document.addEventListener('click', async e => {
   if (e.target.closest('#libUp')) { $('libIn').value = ''; $('libIn').click(); return; }
   if (e.target.closest('#libUpDir')) { $('libDirIn').value = ''; $('libDirIn').click(); return; }
   if (e.target.closest('#libMk')) { const name = prompt('文件夹名字'); if (name && name.trim()) { try { await api('api/lib/mkdir', { method: 'POST', body: JSON.stringify({ path: S.libPath, name: name.trim() }) }); await loadLib(); } catch (err) { toast(err.message); } } return; }
-  const lb = e.target.closest('[data-ldel],[data-lzip],[data-go],[data-open]');
+  const lb = e.target.closest('[data-rv],[data-ldel],[data-lzip],[data-go],[data-open]');
   if (lb) {
     try {
-      if (lb.dataset.ldel !== undefined) { e.stopPropagation(); await api('api/lib?path=' + encodeURIComponent(lb.dataset.ldel), { method: 'DELETE' }); await refresh(); toast('已放进回收站'); }
+      if (lb.dataset.rv !== undefined) { e.stopPropagation(); const on = lb.dataset.on === '1'; await api('api/lib/review', { method: 'POST', body: JSON.stringify({ path: lb.dataset.rv, on }) }); await loadLib(); toast(on ? '已确认审核' : '已撤销审核'); }
+      else if (lb.dataset.ldel !== undefined) { e.stopPropagation(); await api('api/lib?path=' + encodeURIComponent(lb.dataset.ldel), { method: 'DELETE' }); await refresh(); toast('已放进回收站'); }
       else if (lb.dataset.lzip !== undefined) { e.stopPropagation(); S.libZip = S.libZip && S.libZip.path === lb.dataset.lzip ? null : { path: lb.dataset.lzip, entries: (await api('api/lib/zip?path=' + encodeURIComponent(lb.dataset.lzip))).entries }; renderLib(); }
       else if (lb.dataset.go !== undefined) { go('L', lb.dataset.go); }
       else if (lb.dataset.open !== undefined) { const p = lb.dataset.open; window.open('lib/' + enc(p) + (PREVIEW.test(p) ? '?inline=1' : ''), PREVIEW.test(p) ? '_blank' : '_self'); }

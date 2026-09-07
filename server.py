@@ -204,13 +204,14 @@ class Handler(BaseHTTPRequestHandler):
             if fp is None or not os.path.isdir(fp):
                 return self.fail("没有这个目录", 404)
             dirs, files = [], []
+            review = load("records.json", {}).get("review", {})
             for name in sorted(os.listdir(fp)):
                 if name.startswith("."):
                     continue
                 full = os.path.join(fp, name)
                 if os.path.isdir(full):
                     cnt = sum(1 for x in os.listdir(full) if not x.startswith("."))
-                    dirs.append({"name": name, "count": cnt})
+                    dirs.append({"name": name, "count": cnt, "review": review.get(rel + "/" + name if rel else name)})
                 else:
                     st = os.stat(full)
                     files.append({"name": name, "size": st.st_size, "at": time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime(st.st_mtime))})
@@ -349,6 +350,20 @@ class Handler(BaseHTTPRequestHandler):
                 return self.fail("目录不对")
             os.makedirs(os.path.join(fp, name), exist_ok=True)
             return self.send_json({})
+        if path == "/api/lib/review":
+            b = self.body_json()
+            fp, rel = lib_path(str(b.get("path", "")))
+            if fp is None or not rel or not os.path.isdir(fp):
+                return self.fail("目录不对")
+
+            def h(d):
+                rv = d.setdefault("review", {})
+                if b.get("on"):
+                    rv[rel] = {"by": u, "at": now()}
+                else:
+                    rv.pop(rel, None)
+            self.mutate(h)
+            return self.send_json({})
         if path == "/api/lib/upload":
             fp, rel = lib_path(urllib.parse.unquote(q.get("path", [""])[0]))
             if fp is None or not os.path.isdir(fp):
@@ -471,8 +486,12 @@ class Handler(BaseHTTPRequestHandler):
             isdir = os.path.isdir(fp)
             size = os.path.getsize(fp) if not isdir else 0
             os.replace(fp, dst)
-            self.mutate(lambda d: d["trash"].insert(0, {"id": tid, "kind": "lib", "at": now(), "by": u, "path": rel,
-                                                         "isdir": isdir, "size": size}))
+
+            def h(d):
+                rv = d.get("review", {}).pop(rel, None)
+                d["trash"].insert(0, {"id": tid, "kind": "lib", "at": now(), "by": u, "path": rel,
+                                      "isdir": isdir, "size": size, "review": rv})
+            self.mutate(h)
             return self.send_json({})
         if len(m) == 4 and m[1:3] == ["api", "trash"]:
             def h(d):
@@ -514,6 +533,8 @@ class Handler(BaseHTTPRequestHandler):
                 if os.path.exists(src):
                     os.replace(src, dst)
                 shutil.rmtree(os.path.join(LIB, ".回收站", t["id"]), ignore_errors=True)
+                if t.get("review"):
+                    d.setdefault("review", {})[os.path.relpath(dst, LIB).replace(os.sep, "/")] = t["review"]
             else:
                 r = next((x for x in d["records"] if x["id"] == t["rid"]), None)
                 if not r:
