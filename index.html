@@ -5,59 +5,65 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>定制协作</title>
 <style>
-:root{--ink:#1f2328;--mute:#7a838f;--line:#d9dde3;--bg:#f4f5f7;--teal:#3f7f8c;--red:#b5433a;--green:#3f6f5b;--soft:#eef3f4}
+:root{--ink:#1f2328;--mute:#7a838f;--line:#e2e5ea;--bg:#f4f5f7;--teal:#3f7f8c;--red:#b5433a;--green:#3f6f5b;--soft:#f0f3f4;--hover:#fafbfc}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 "Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}
-header{background:#fff;border-bottom:1px solid var(--line);padding:0 28px;display:flex;align-items:center;gap:8px;height:60px}
-header h1{font-size:20px;margin:0 28px 0 0;font-weight:700}
-.tab{height:60px;padding:0 22px;border:0;border-bottom:3px solid transparent;background:none;font:inherit;font-size:17px;cursor:pointer;color:var(--mute)}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 "Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}
+header{background:#fff;border-bottom:1px solid var(--line);padding:0 28px;display:flex;align-items:center;gap:4px;height:58px;position:sticky;top:0;z-index:5}
+header h1{font-size:19px;margin:0 24px 0 0;font-weight:700}
+.tab{height:58px;padding:0 18px;border:0;border-bottom:3px solid transparent;background:none;font:inherit;font-size:16px;cursor:pointer;color:var(--mute)}
 .tab.on{color:var(--teal);border-bottom-color:var(--teal);font-weight:700}
+.tab .cnt{margin-left:4px;font-size:12px;background:var(--line);border-radius:999px;padding:1px 7px;color:var(--mute)}
 header .who{margin-left:auto;color:var(--mute)}
-main{max-width:1240px;margin:24px auto;padding:0 20px}
-button{height:40px;border:1px solid var(--line);border-radius:8px;padding:0 16px;font:inherit;background:#fff;cursor:pointer;color:var(--ink)}
+main{max-width:1280px;margin:22px auto;padding:0 20px}
+button{height:38px;border:1px solid var(--line);border-radius:8px;padding:0 16px;font:inherit;background:#fff;cursor:pointer;color:var(--ink)}
 button.pri{background:var(--teal);border-color:var(--teal);color:#fff}
-button.sm{height:32px;padding:0 12px;font-size:14px}
+button.sm{height:30px;padding:0 11px;font-size:13.5px}
 button.warn{color:var(--red)}
 button.on{background:var(--green);border-color:var(--green);color:#fff}
-input{border:1px solid var(--line);border-radius:8px;padding:0 12px;font:inherit;background:#fff;height:40px}
-.add{display:flex;justify-content:flex-end;margin-bottom:18px}
+input{border:1px solid var(--line);border-radius:8px;padding:0 10px;font:inherit;background:#fff;height:36px}
+input:focus{outline:2px solid #bcd6dc;border-color:var(--teal)}
+.add{display:flex;justify-content:flex-end;margin-bottom:14px}
 .add[hidden]{display:none}
 table{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+th{padding:10px 14px;text-align:left;background:var(--soft);font-weight:700;font-size:14px;color:var(--mute)}
 td{padding:12px 14px;text-align:left;vertical-align:top;border-top:1px solid var(--line)}
-th{padding:10px 14px;text-align:left;background:var(--soft);font-weight:700}
-td.a,th:last-child{text-align:right}
-td.n{width:56px;font-weight:700}
-td.note{width:230px}
-td.note input{width:100%;height:36px}
-td.price{width:120px}
-td.price input{width:100%;height:36px}
-td.a{width:340px;white-space:nowrap;text-align:right}
+tr:hover td{background:var(--hover)}
+td.n{width:52px;font-weight:700;color:var(--mute)}
+td.note{width:210px}
+td.note input{width:100%}
+td.price{width:110px}
+td.price input{width:100%}
+td.a,th.a{width:360px;text-align:right;white-space:nowrap}
 td.a .pfs{display:flex;gap:10px;justify-content:flex-end;margin-top:10px}
-td.a .pf{display:flex;flex-direction:column;align-items:center;gap:2px;color:var(--mute);text-decoration:none;font-size:13px}
-td.a .pf img{height:96px;max-width:150px;object-fit:cover;border:1px solid var(--line);border-radius:8px;background:#fff}
-table.sum td,table.sum th{padding:12px 14px;text-align:right;border-top:1px solid var(--line);color:var(--ink)}
-table.sum th{background:var(--soft);border-top:0;font-weight:700}
-table.sum td:first-child,table.sum th:first-child{text-align:left;font-weight:700}
-table.sum tr.total td{font-weight:700}
+td.a .pf{display:flex;flex-direction:column;align-items:center;gap:2px;color:var(--mute);text-decoration:none;font-size:12.5px}
+td.a .pf img{height:88px;max-width:140px;object-fit:cover;border:1px solid var(--line);border-radius:8px;background:#fff}
 tr.done td{color:var(--mute)}
-tr.sep td{background:var(--soft);color:var(--mute);padding:8px 14px;font-size:14px}
+tr.done td .file a{color:var(--mute)}
+tr.sep td{background:var(--soft);color:var(--mute);padding:6px 14px;font-size:13px}
 .tree{margin-bottom:8px}
 .tree details{margin:2px 0}
-.tree summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px}
+.tree summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px;white-space:nowrap}
 .tree summary::before{content:"▸";width:12px;color:var(--mute)}
 .tree details[open]>summary::before{content:"▾"}
-.tree .in{padding-left:20px}
-.file{display:flex;align-items:center;gap:8px;margin:3px 0;flex-wrap:wrap}
+.tree .in{padding-left:18px}
+.file{display:flex;align-items:center;gap:10px;margin:3px 0;white-space:nowrap}
 .file a,.file .op{color:var(--teal);text-decoration:none;cursor:pointer}
+.file .nm{overflow:hidden;text-overflow:ellipsis;max-width:320px}
 .file .x,.tree .x{color:var(--red);cursor:pointer;font-size:13px}
 .file .sz{color:var(--mute);font-size:13px}
-.zip{padding-left:20px}
-.btns{display:flex;gap:8px}
+.zip{padding-left:18px}
 .empty{color:var(--mute);text-align:center;padding:60px 0}
+table.sum td,table.sum th{text-align:right;color:var(--ink)}
+table.sum td:first-child,table.sum th:first-child{text-align:left;font-weight:700}
+table.sum tr.total td{font-weight:700}
+table.trash td.k{width:70px;color:var(--mute)}
+table.trash td.w{width:110px}
+table.trash td.t{width:170px;color:var(--mute)}
+table.trash td.a{width:200px}
 .mask{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;align-items:center;justify-content:center;z-index:9}
 .mask.on{display:flex}
-.dlg{background:#fff;border-radius:14px;padding:24px;width:min(520px,92vw);display:grid;gap:12px}
-.dlg input{width:100%}
+.dlg{background:#fff;border-radius:14px;padding:24px;width:min(420px,92vw);display:grid;gap:12px}
+.dlg input{width:100%;height:40px}
 .dlg .row{display:flex;gap:10px;justify-content:flex-end}
 #toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 18px;border-radius:10px;display:none;z-index:10}
 </style>
@@ -69,6 +75,7 @@ tr.sep td{background:var(--soft);color:var(--mute);padding:8px 14px;font-size:14
   <button class="tab" data-t="B">B 题</button>
   <button class="tab" data-t="C">C 题</button>
   <button class="tab" data-t="S">汇总</button>
+  <button class="tab" data-t="T">回收站<span class="cnt" id="tcnt" hidden></span></button>
   <span class="who" id="who"></span>
   <button id="btnOut" hidden>退出</button>
 </header>
@@ -87,7 +94,7 @@ tr.sep td{background:var(--soft);color:var(--mute);padding:8px 14px;font-size:14
 <div id="toast"></div>
 
 <script>
-const S = { me: '', topic: localStorage.getItem('dz_topic') || 'A', records: [], uploadTo: null, closed: new Set(), zips: {}, proofFor: null };
+const S = { me: '', topic: localStorage.getItem('dz_topic') || 'A', records: [], trash: [], uploadTo: null, closed: new Set(), zips: {}, proofFor: null };
 const FLAGS = [['deposit', '未付定金', '已付定金'], ['paid', '未结账', '已结账'], ['done', '未完成', '已完成']];
 const money = n => (Math.round((n || 0) * 100) / 100).toLocaleString('zh-CN');
 const $ = id => document.getElementById(id);
@@ -110,16 +117,19 @@ async function boot() {
   const me = await api('api/me');
   if (!me.name) return showLogin();
   S.me = me.name; $('mLogin').classList.remove('on');
-  $('who').textContent = me.name; $('btnOut').hidden = false; $('add').hidden = false;
+  $('who').textContent = me.name; $('btnOut').hidden = false;
   await refresh();
 }
 async function refresh() {
-  try { S.records = (await api('api/data')).records; render(); } catch (e) { $('list').innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
+  try { const d = await api('api/data'); S.records = d.records; S.trash = d.trash || []; render(); }
+  catch (e) { $('list').innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
 }
 function tree(files) {
   const root = { dirs: {}, files: [] };
   for (const f of files) {
-    const parts = f.name.split('/'); let node = root;
+    const parts = f.name.split('/');
+    if (parts[0] === '凭证') continue;
+    let node = root;
     for (const d of parts.slice(0, -1)) node = node.dirs[d] ||= { dirs: {}, files: [] };
     node.files.push({ ...f, base: parts[parts.length - 1] });
   }
@@ -131,12 +141,12 @@ function fileRow(rid, f) {
   const key = rid + '|' + f.name;
   const zip = S.zips[key];
   return `<div class="file">
-    ${PREVIEW.test(f.name) ? `<a href="${url}?inline=1" target="_blank">${esc(f.base)}</a>` : `<span>${esc(f.base)}</span>`}
-    <span class="sz">${mb(f.size)} ${esc(f.by || '')} ${when(f.at)}</span>
+    ${PREVIEW.test(f.name) ? `<a class="nm" href="${url}?inline=1" target="_blank">${esc(f.base)}</a>` : `<span class="nm">${esc(f.base)}</span>`}
+    <span class="sz">${mb(f.size)} · ${esc(f.by || '')} ${when(f.at)}</span>
     <a href="${url}">下载</a>
     ${isZip ? `<span class="op" data-zip="${esc(key)}">${zip ? '收起' : '查看'}</span>` : ''}
     <span class="x" data-rm="${esc(rid)}" data-name="${esc(f.name)}">删除</span>
-  </div>${zip ? `<div class="zip">${zip.map(e => `<div class="file">${PREVIEW.test(e.name) ? `<a href="${url}?entry=${encodeURIComponent(e.name)}" target="_blank">${esc(e.name)}</a>` : `<a href="${url}?entry=${encodeURIComponent(e.name)}">${esc(e.name)}</a>`}<span class="sz">${mb(e.size)}</span></div>`).join('') || '<div class="sz">空的</div>'}</div>` : ''}`;
+  </div>${zip ? `<div class="zip">${zip.map(e => `<div class="file"><a class="nm" href="${url}?entry=${encodeURIComponent(e.name)}" ${PREVIEW.test(e.name) ? 'target="_blank"' : ''}>${esc(e.name)}</a><span class="sz">${mb(e.size)}</span></div>`).join('') || '<div class="sz">空的</div>'}</div>` : ''}`;
 }
 function dirRows(rid, node, prefix) {
   let h = '';
@@ -152,10 +162,19 @@ function renderSummary() {
   $('list').innerHTML = `<table class="sum"><tr><th></th><th>客户</th><th>已完成</th><th>定价合计</th><th>已结账</th><th>未结账</th><th>只付了定金</th></tr>
     ${['A', 'B', 'C'].map(k => line(k + ' 题', S.records.filter(r => r.topic === k))).join('')}${line('合计', S.records)}</table>`;
 }
+function renderTrash() {
+  if (!S.trash.length) { $('list').innerHTML = '<div class="empty">回收站是空的</div>'; return; }
+  const row = t => t.kind === 'row'
+    ? `<tr><td class="k">客户</td><td class="w">${t.rec.topic} 题 ${t.rec.seq} 号</td><td>${esc(t.rec.note || '')}${t.rec.price ? ' · ' + money(t.rec.price) : ''}${(t.rec.files || []).length ? ' · ' + t.rec.files.length + ' 个文件' : ''}</td><td class="t">${esc(t.by)} ${when(t.at)}</td><td class="a"><button class="sm" data-restore="${t.id}">恢复</button> <button class="sm warn" data-purge="${t.id}">彻底删除</button></td></tr>`
+    : `<tr><td class="k">文件</td><td class="w">${t.topic} 题 ${t.seq} 号</td><td>${esc(t.file.name)} <span class="sz">${mb(t.file.size)}</span></td><td class="t">${esc(t.by)} ${when(t.at)}</td><td class="a"><button class="sm" data-restore="${t.id}">恢复</button> <button class="sm warn" data-purge="${t.id}">彻底删除</button></td></tr>`;
+  $('list').innerHTML = `<table class="trash"><tr><th></th><th>位置</th><th>内容</th><th>删除</th><th class="a"></th></tr>${S.trash.map(row).join('')}</table>`;
+}
 function render() {
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t.dataset.t === S.topic));
-  $('add').hidden = !S.me || S.topic === 'S';
+  $('tcnt').hidden = !S.trash.length; $('tcnt').textContent = S.trash.length;
+  $('add').hidden = !S.me || S.topic === 'S' || S.topic === 'T';
   if (S.topic === 'S') return renderSummary();
+  if (S.topic === 'T') return renderTrash();
   const rows = S.records.filter(r => r.topic === S.topic);
   const todo = rows.filter(r => !r.done).sort((a, b) => a.created.localeCompare(b.created));
   const done = rows.filter(r => r.done).sort((a, b) => b.updated.localeCompare(a.updated));
@@ -165,23 +184,22 @@ function render() {
     <td class="n">${++n}</td>
     <td class="note"><input value="${esc(r.note || '')}" placeholder="备注" data-note="${r.id}"></td>
     <td class="price"><input type="number" min="0" step="1" value="${r.price || ''}" placeholder="定价" data-price="${r.id}"></td>
-    <td><div class="tree">${dirRows(r.id, tree(r.files || []), '')}</div>
-      <div class="btns"><button class="sm" data-up="${r.id}">上传</button></div></td>
+    <td><div class="tree">${dirRows(r.id, tree(r.files || []), '')}</div><button class="sm" data-up="${r.id}">上传</button></td>
     <td class="a">${FLAGS.map(([k, off, on]) => `<button class="sm ${r[k] ? 'on' : ''}" data-flag="${k}" data-id="${r.id}">${r[k] ? on : off}</button> `).join('')}<button class="sm warn" data-del="${r.id}">删除</button>
-      <div class="pfs">${FLAGS.filter(([k]) => r.proof && r.proof[k]).map(([k, off, on]) => `<a class="pf" target="_blank" href="files/${encodeURIComponent(r.id)}/${enc(r.proof[k])}?inline=1" title="${on}"><img src="files/${encodeURIComponent(r.id)}/${enc(r.proof[k])}?inline=1" alt="${on}"><span>${on}</span></a>`).join('')}</div></td>
+      <div class="pfs">${FLAGS.filter(([k]) => r.proof && r.proof[k]).map(([k, off, on]) => `<a class="pf" target="_blank" href="files/${encodeURIComponent(r.id)}/${enc(r.proof[k])}?inline=1"><img src="files/${encodeURIComponent(r.id)}/${enc(r.proof[k])}?inline=1" alt="${on}"><span>${on}</span></a>`).join('')}</div></td>
   </tr>`;
-  $('list').innerHTML = `<table><tr><th></th><th>备注</th><th>定价</th><th>文件</th><th>状态</th></tr>${todo.map(tr).join('')}${done.length ? `<tr class="sep"><td colspan="5">已完成</td></tr>` + done.map(tr).join('') : ''}</table>`;
+  $('list').innerHTML = `<table><tr><th></th><th>备注</th><th>定价</th><th>文件</th><th class="a">状态</th></tr>${todo.map(tr).join('')}${done.length ? `<tr class="sep"><td colspan="5">已完成</td></tr>` + done.map(tr).join('') : ''}</table>`;
 }
 async function upload(rid, list) {
   const fd = new FormData(); let total = 0;
-  for (const f of list) { fd.append('file', f, f.webkitRelativePath || f.name); total += f.size; }
+  for (const f of list) { fd.append('file', f, f.name); total += f.size; }
   if (total > 500 * 1048576) { toast('一次最多传 500 MB'); return; }
   toast('上传中 ' + mb(total));
   try { await api('api/records/' + rid + '/files', { method: 'POST', body: fd }); await refresh(); toast('已上传'); } catch (err) { toast(err.message); }
 }
 document.addEventListener('click', async e => {
   const t = e.target.closest('.tab'); if (t) { S.topic = t.dataset.t; localStorage.setItem('dz_topic', S.topic); render(); return; }
-  const b = e.target.closest('[data-up],[data-del],[data-rm],[data-rmdir],[data-flag],[data-zip]'); if (!b) return;
+  const b = e.target.closest('[data-up],[data-del],[data-rm],[data-rmdir],[data-flag],[data-zip],[data-restore],[data-purge]'); if (!b) return;
   const find = id => S.records.find(r => r.id === id);
   try {
     if (b.dataset.up) { S.uploadTo = b.dataset.up; $('fileIn').value = ''; $('fileIn').click(); }
@@ -190,9 +208,11 @@ document.addEventListener('click', async e => {
       if (r[k]) { if (confirm('取消这个勾？')) { await api('api/records/' + r.id, { method: 'PUT', body: JSON.stringify({ [k]: false }) }); await refresh(); } }
       else { S.proofFor = { rid: r.id, k }; $('proofIn').value = ''; $('proofIn').click(); }
     }
-    else if (b.dataset.del) { if (confirm('删除这一行和它的文件？')) { await api('api/records/' + b.dataset.del, { method: 'DELETE' }); await refresh(); } }
-    else if (b.dataset.rm) { e.preventDefault(); if (confirm('删除 ' + b.dataset.name + '？')) { await api('api/records/' + b.dataset.rm + '/files/' + enc(b.dataset.name), { method: 'DELETE' }); await refresh(); } }
-    else if (b.dataset.rmdir) { e.preventDefault(); if (confirm('删除文件夹 ' + b.dataset.name + ' 和里面的全部文件？')) { await api('api/records/' + b.dataset.rmdir + '/files/' + enc(b.dataset.name) + '?dir=1', { method: 'DELETE' }); await refresh(); } }
+    else if (b.dataset.del) { await api('api/records/' + b.dataset.del, { method: 'DELETE' }); await refresh(); toast('已放进回收站'); }
+    else if (b.dataset.rm) { e.preventDefault(); await api('api/records/' + b.dataset.rm + '/files/' + enc(b.dataset.name), { method: 'DELETE' }); await refresh(); toast('已放进回收站'); }
+    else if (b.dataset.rmdir) { e.preventDefault(); await api('api/records/' + b.dataset.rmdir + '/files/' + enc(b.dataset.name) + '?dir=1', { method: 'DELETE' }); await refresh(); toast('已放进回收站'); }
+    else if (b.dataset.restore) { await api('api/trash/' + b.dataset.restore + '/restore', { method: 'POST', body: '{}' }); await refresh(); toast('已恢复'); }
+    else if (b.dataset.purge) { if (confirm('彻底删除，不能再找回？')) { await api('api/trash/' + b.dataset.purge, { method: 'DELETE' }); await refresh(); } }
     else if (b.dataset.zip) {
       const key = b.dataset.zip;
       if (S.zips[key]) { delete S.zips[key]; render(); return; }
@@ -208,13 +228,13 @@ document.addEventListener('change', async e => {
   try { await api('api/records/' + id, { method: 'PUT', body: JSON.stringify(body) }); const r = S.records.find(r => r.id === id); if (r) Object.assign(r, body); } catch (err) { toast(err.message); }
 });
 document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.matches('[data-note],[data-price]')) e.target.blur(); });
-$('fileIn').addEventListener('change', () => { if (S.uploadTo && $('fileIn').files.length) upload(S.uploadTo, [...$('fileIn').files]); });
 $('proofIn').addEventListener('change', async () => {
   const f = $('proofIn').files[0]; if (!S.proofFor || !f) return;
   const fd = new FormData(); fd.append('file', f, f.name);
   toast('上传凭证');
   try { await api('api/records/' + S.proofFor.rid + '/proof/' + S.proofFor.k, { method: 'POST', body: fd }); await refresh(); } catch (err) { toast(err.message); }
 });
+$('fileIn').addEventListener('change', () => { if (S.uploadTo && $('fileIn').files.length) upload(S.uploadTo, [...$('fileIn').files]); });
 $('aOk').onclick = async () => { try { await api('api/records', { method: 'POST', body: JSON.stringify({ topic: S.topic }) }); await refresh(); } catch (e) { toast(e.message); } };
 $('lOk').onclick = async () => { try { await api('api/login', { method: 'POST', body: JSON.stringify({ name: $('lName').value.trim() }) }); await boot(); } catch (e) { toast(e.message); } };
 $('lName').addEventListener('keydown', e => { if (e.key === 'Enter') $('lOk').click(); });

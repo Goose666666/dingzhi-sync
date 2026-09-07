@@ -161,7 +161,9 @@ class Handler(BaseHTTPRequestHandler):
             if not self.need_user():
                 return
             with LOCK:
-                return self.send_json(load("records.json", {"records": []}))
+                d = load("records.json", {"records": []})
+                d.setdefault("trash", [])
+                return self.send_json(d)
         q = urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query)
         if path.startswith("/files/"):
             if not self.need_user():
@@ -265,7 +267,9 @@ class Handler(BaseHTTPRequestHandler):
                    "paid": False, "price": 0, "proof": {}, "files": [], "created": now(), "updated": now(), "updatedBy": u}
 
             def f(d):
-                rec["seq"] = 1 + max([x.get("seq", 0) for x in d["records"] if x["topic"] == topic] or [0])
+                used = [x.get("seq", 0) for x in d["records"] if x["topic"] == topic]
+                used += [t["rec"].get("seq", 0) for t in d.get("trash", []) if t["kind"] == "row" and t["rec"]["topic"] == topic]
+                rec["seq"] = 1 + max(used or [0])
                 d["records"].append(rec)
             self.mutate(f)
             return self.send_json(rec)
@@ -274,6 +278,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.upload(m[3], u)
         if len(m) == 6 and m[1:3] == ["api", "records"] and m[4] == "proof" and m[5] in ("done", "deposit", "paid"):
             return self.upload(m[3], u, proof=m[5])
+        if len(m) == 5 and m[1:3] == ["api", "trash"] and m[4] == "restore":
+            return self.restore(m[3], u)
         self.fail("没有这个地址", 404)
 
     def do_PUT(self):
@@ -325,7 +331,7 @@ class Handler(BaseHTTPRequestHandler):
             def f(d):
                 for x in d["records"]:
                     if x["id"] == m[3]:
-                        shutil.rmtree(folder_of(x), ignore_errors=True)
+                        d["trash"].insert(0, {"id": secrets.token_hex(4), "kind": "row", "at": now(), "by": u, "rec": x})
                 d["records"] = [x for x in d["records"] if x["id"] != m[3]]
             self.mutate(f)
             return self.send_json({})
@@ -337,22 +343,82 @@ class Handler(BaseHTTPRequestHandler):
                 r = next((x for x in d["records"] if x["id"] == rid), None)
                 if not r:
                     return
+                hit = [x for x in r.get("files", []) if (x["name"].startswith(rel + "/") if is_dir else x["name"] == rel)]
+                for x in hit:
+                    src = os.path.join(folder_of(r), *x["name"].split("/"))
+                    dst = os.path.join(folder_of(r), ".回收站", *x["name"].split("/"))
+                    if os.path.exists(src):
+                        os.makedirs(os.path.dirname(dst), exist_ok=True)
+                        os.replace(src, dst)
+                    item = {"id": secrets.token_hex(4), "kind": "file", "at": now(), "by": u, "rid": r["id"],
+                            "topic": r["topic"], "seq": r.get("seq"), "file": x}
+                    for k, v in list(r.get("proof", {}).items()):
+                        if v == x["name"]:
+                            item["proof"] = k
+                            del r["proof"][k]
+                            r[k] = False
+                    d["trash"].insert(0, item)
+                names = {x["name"] for x in hit}
+                r["files"] = [x for x in r.get("files", []) if x["name"] not in names]
                 if is_dir:
-                    r["files"] = [x for x in r.get("files", []) if not x["name"].startswith(rel + "/")]
                     shutil.rmtree(os.path.join(folder_of(r), *rel.split("/")), ignore_errors=True)
-                else:
-                    r["files"] = [x for x in r.get("files", []) if x["name"] != rel]
-                    fp = os.path.join(folder_of(r), *rel.split("/"))
-                    if os.path.exists(fp):
-                        os.remove(fp)
                 r["updated"], r["updatedBy"] = now(), u
             self.mutate(g)
             return self.send_json({})
+        if len(m) == 4 and m[1:3] == ["api", "trash"]:
+            def h(d):
+                t = next((x for x in d["trash"] if x["id"] == m[3]), None)
+                if not t:
+                    return
+                if t["kind"] == "row":
+                    shutil.rmtree(folder_of(t["rec"]), ignore_errors=True)
+                else:
+                    fp = os.path.join(FILES, t["topic"] + "题", str(t["seq"]), ".回收站", *t["file"]["name"].split("/"))
+                    if os.path.exists(fp):
+                        os.remove(fp)
+                d["trash"] = [x for x in d["trash"] if x["id"] != m[3]]
+            self.mutate(h)
+            return self.send_json({})
         self.fail("没有这个地址", 404)
+
+    def restore(self, tid, u):
+        box = {}
+
+        def f(d):
+            t = next((x for x in d["trash"] if x["id"] == tid), None)
+            if not t:
+                box["err"] = "回收站里没有这一条"
+                return
+            if t["kind"] == "row":
+                r = t["rec"]
+                r["updated"], r["updatedBy"] = now(), u
+                d["records"].append(r)
+            else:
+                r = next((x for x in d["records"] if x["id"] == t["rid"]), None)
+                if not r:
+                    box["err"] = "这个文件所在的行还在回收站里，先恢复那一行"
+                    return
+                x = t["file"]
+                src = os.path.join(folder_of(r), ".回收站", *x["name"].split("/"))
+                dst = os.path.join(folder_of(r), *x["name"].split("/"))
+                if os.path.exists(src):
+                    os.makedirs(os.path.dirname(dst), exist_ok=True)
+                    os.replace(src, dst)
+                r["files"] = [y for y in r.get("files", []) if y["name"] != x["name"]] + [x]
+                if t.get("proof"):
+                    r.setdefault("proof", {})[t["proof"]] = x["name"]
+                    r[t["proof"]] = True
+                r["updated"], r["updatedBy"] = now(), u
+            d["trash"] = [y for y in d["trash"] if y["id"] != tid]
+        self.mutate(f)
+        if box.get("err"):
+            return self.fail(box["err"])
+        return self.send_json({})
 
     def mutate(self, fn):
         with LOCK:
             d = load("records.json", {"records": []})
+            d.setdefault("trash", [])
             fn(d)
             save("records.json", d)
 
