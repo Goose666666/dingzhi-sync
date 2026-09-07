@@ -331,6 +331,8 @@ class Handler(BaseHTTPRequestHandler):
             self.mutate(f)
             return self.send_json(rec)
         m = path.split("/")
+        if len(m) == 5 and m[1:3] == ["api", "records"] and m[4] == "fromlib":
+            return self.from_lib(m[3], u)
         if len(m) == 5 and m[1:3] == ["api", "records"] and m[4] == "files":
             return self.upload(m[3], u)
         if len(m) == 6 and m[1:3] == ["api", "records"] and m[4] == "proof" and m[5] in ("done", "deposit", "paid"):
@@ -363,8 +365,12 @@ class Handler(BaseHTTPRequestHandler):
             for fname, data in parse_multipart(ctype, body):
                 if not fname:
                     continue
-                name = safe_name(fname)
-                with open(os.path.join(fp, name), "wb") as f:
+                name = safe_rel(fname)
+                if any(p.startswith(".") for p in name.split("/")):
+                    continue
+                dst = os.path.join(fp, *name.split("/"))
+                os.makedirs(os.path.dirname(dst), exist_ok=True)
+                with open(dst, "wb") as f:
                     f.write(data)
                 names.append(name)
             return self.send_json({"files": names})
@@ -535,6 +541,44 @@ class Handler(BaseHTTPRequestHandler):
             d.setdefault("trash", [])
             fn(d)
             save("records.json", d)
+
+    def from_lib(self, rid, u):
+        """把文件库里选中的文件或文件夹拷进这一行的文件包。"""
+        paths = [str(x) for x in (self.body_json().get("paths") or [])][:200]
+        added = []
+        with LOCK:
+            d = load("records.json", {"records": []})
+            r = next((x for x in d["records"] if x["id"] == rid), None)
+            if not r:
+                return self.fail("这一行不存在", 404)
+            folder = folder_of(r)
+            for p in paths:
+                src, rel = lib_path(p)
+                if src is None or not rel or not os.path.exists(src):
+                    continue
+                base = rel.split("/")[-1]
+                pairs = []
+                if os.path.isdir(src):
+                    for root, dirs, files in os.walk(src):
+                        dirs[:] = [x for x in dirs if not x.startswith(".")]
+                        for fn in files:
+                            if fn.startswith("."):
+                                continue
+                            full = os.path.join(root, fn)
+                            relname = base + "/" + os.path.relpath(full, src).replace(os.sep, "/")
+                            pairs.append((full, relname))
+                else:
+                    pairs.append((src, base))
+                for full, relname in pairs:
+                    dst = os.path.join(folder, *relname.split("/"))
+                    os.makedirs(os.path.dirname(dst), exist_ok=True)
+                    shutil.copy2(full, dst)
+                    r["files"] = [x for x in r.get("files", []) if x["name"] != relname]
+                    r["files"].append({"name": relname, "size": os.path.getsize(dst), "by": u, "at": now()})
+                    added.append(relname)
+            r["updated"], r["updatedBy"] = now(), u
+            save("records.json", d)
+        return self.send_json({"files": added})
 
     def upload(self, rid, u, proof=None):
         n = int(self.headers.get("Content-Length") or 0)
