@@ -24,7 +24,8 @@ input{border:1px solid var(--line);border-radius:8px;padding:0 12px;font:inherit
 .add[hidden]{display:none}
 table{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden}
 td{padding:12px 14px;text-align:left;vertical-align:top;border-top:1px solid var(--line)}
-tr:first-child td{border-top:0}
+th{padding:10px 14px;text-align:left;background:var(--soft);font-weight:700}
+td.a,th:last-child{text-align:right}
 td.n{width:56px;font-weight:700}
 td.note{width:230px}
 td.note input{width:100%;height:36px}
@@ -160,14 +161,14 @@ function render() {
   let n = 0;
   const tr = r => `<tr class="${r.done ? 'done' : ''}">
     <td class="n">${++n}</td>
-    <td class="note"><input value="${esc(r.note || '')}" data-note="${r.id}"></td>
-    <td class="price"><input type="number" min="0" step="1" value="${r.price || ''}" data-price="${r.id}"></td>
+    <td class="note"><input value="${esc(r.note || '')}" placeholder="备注" data-note="${r.id}"></td>
+    <td class="price"><input type="number" min="0" step="1" value="${r.price || ''}" placeholder="定价" data-price="${r.id}"></td>
     <td><div class="tree">${dirRows(r.id, tree(r.files || []), '')}</div>
       <div class="btns"><button class="sm" data-up="${r.id}">上传</button></div></td>
     <td class="a">${FLAGS.map(([k, off, on]) => `<button class="sm ${r[k] ? 'on' : ''}" data-flag="${k}" data-id="${r.id}">${r[k] ? on : off}</button> `).join('')}<button class="sm warn" data-del="${r.id}">删除</button>
       <div>${FLAGS.filter(([k]) => r.proof && r.proof[k]).map(([k, off, on]) => `<a class="pf" target="_blank" href="files/${encodeURIComponent(r.id)}/${enc(r.proof[k])}?inline=1">${on}凭证</a>`).join('')}</div></td>
   </tr>`;
-  $('list').innerHTML = `<table>${todo.map(tr).join('')}${done.length ? `<tr class="sep"><td colspan="5">已完成</td></tr>` + done.map(tr).join('') : ''}</table>`;
+  $('list').innerHTML = `<table><tr><th></th><th>备注</th><th>定价</th><th>文件</th><th>状态</th></tr>${todo.map(tr).join('')}${done.length ? `<tr class="sep"><td colspan="5">已完成</td></tr>` + done.map(tr).join('') : ''}</table>`;
 }
 async function upload(rid, list) {
   const fd = new FormData(); let total = 0;
