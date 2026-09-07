@@ -28,6 +28,7 @@ DATA = os.path.join(HERE, "data")
 FILES = os.path.join(os.path.dirname(HERE), "定制文件")   # 服务器上就是 /data1/liutianrui/定制文件
 LIB = os.path.join(os.path.dirname(HERE), "文件库")        # 原稿、定制稿、代码
 LIB_TOP = ("原稿", "定制稿", "代码")
+LIB_FIXED = LIB_TOP + ("原稿/A题", "原稿/B题", "原稿/C题")   # 固定目录，不能删
 INDEX = os.path.join(HERE, "index.html")
 PREFIX = "/dz"
 USERS = ("ltr", "qyh", "zjl")
@@ -462,7 +463,7 @@ class Handler(BaseHTTPRequestHandler):
         if m[1:3] == ["api", "lib"] and len(m) == 3:
             q = urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query)
             fp, rel = lib_path(urllib.parse.unquote(q.get("path", [""])[0]))
-            if fp is None or not rel or rel in LIB_TOP or not os.path.exists(fp):
+            if fp is None or not rel or rel in LIB_FIXED or not os.path.exists(fp):
                 return self.fail("不能删这个")
             tid = secrets.token_hex(4)
             dst = os.path.join(LIB, ".回收站", tid, rel.split("/")[-1])
@@ -628,8 +629,8 @@ def main():
     a = ap.parse_args()
     os.makedirs(FILES, exist_ok=True)
     os.makedirs(DATA, exist_ok=True)
-    for top in LIB_TOP:
-        os.makedirs(os.path.join(LIB, top), exist_ok=True)
+    for top in LIB_FIXED:
+        os.makedirs(os.path.join(LIB, *top.split("/")), exist_ok=True)
     if not os.path.exists(os.path.join(DATA, "records.json")):
         save("records.json", {"records": []})
     print("定制协作平台 http://%s:%d" % (a.host, a.port))
