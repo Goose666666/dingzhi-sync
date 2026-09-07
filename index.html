@@ -21,6 +21,7 @@ button.warn{color:var(--red)}
 button.on{background:var(--green);border-color:var(--green);color:#fff}
 input{border:1px solid var(--line);border-radius:8px;padding:0 12px;font:inherit;background:#fff;height:40px}
 .add{display:flex;justify-content:flex-end;margin-bottom:18px}
+.add[hidden]{display:none}
 table{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden}
 td{padding:12px 14px;text-align:left;vertical-align:top;border-top:1px solid var(--line)}
 tr:first-child td{border-top:0}
@@ -31,7 +32,7 @@ td.price{width:120px}
 td.price input{width:100%;height:36px}
 td.a{width:340px;white-space:nowrap;text-align:right}
 td.a .pf{display:inline-block;margin:6px 0 0 4px;color:var(--teal);text-decoration:none;font-size:14px}
-table.sum td,table.sum th{padding:12px 14px;text-align:right;border-top:1px solid var(--line)}
+table.sum td,table.sum th{padding:12px 14px;text-align:right;border-top:1px solid var(--line);color:var(--ink)}
 table.sum th{background:var(--soft);border-top:0;font-weight:700}
 table.sum td:first-child,table.sum th:first-child{text-align:left;font-weight:700}
 table.sum tr.total td{font-weight:700}
@@ -90,6 +91,7 @@ const money = n => (Math.round((n || 0) * 100) / 100).toLocaleString('zh-CN');
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const enc = p => p.split('/').map(encodeURIComponent).join('/');
+const when = t => t ? t.slice(5, 16).replace('T', ' ') : '';
 const mb = n => n >= 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB';
 const PREVIEW = /\.(pdf|png|jpe?g|gif|svg|webp|bmp|txt|md|tex|py|json|csv|log|html?|js|css|bib|m|cls|sty|bat|sh|ya?ml|ini|cfg)$/i;
 let toastTimer;
@@ -128,7 +130,7 @@ function fileRow(rid, f) {
   const zip = S.zips[key];
   return `<div class="file">
     ${PREVIEW.test(f.name) ? `<a href="${url}?inline=1" target="_blank">${esc(f.base)}</a>` : `<span>${esc(f.base)}</span>`}
-    <span class="sz">${mb(f.size)}</span>
+    <span class="sz">${mb(f.size)} ${esc(f.by || '')} ${when(f.at)}</span>
     <a href="${url}">下载</a>
     ${isZip ? `<span class="op" data-zip="${esc(key)}">${zip ? '收起' : '查看'}</span>` : ''}
     <span class="x" data-rm="${esc(rid)}" data-name="${esc(f.name)}">删除</span>
