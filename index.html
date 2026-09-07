@@ -80,7 +80,6 @@ tr.sep td{background:var(--soft);color:var(--mute);padding:8px 14px;font-size:14
 </div></div>
 
 <input type="file" id="fileIn" multiple hidden>
-<input type="file" id="dirIn" webkitdirectory multiple hidden>
 <input type="file" id="proofIn" accept="image/*" hidden>
 <div id="toast"></div>
 
@@ -164,7 +163,7 @@ function render() {
     <td class="note"><input value="${esc(r.note || '')}" data-note="${r.id}"></td>
     <td class="price"><input type="number" min="0" step="1" value="${r.price || ''}" data-price="${r.id}"></td>
     <td><div class="tree">${dirRows(r.id, tree(r.files || []), '')}</div>
-      <div class="btns"><button class="sm" data-up="${r.id}">上传文件</button><button class="sm" data-updir="${r.id}">上传文件夹</button></div></td>
+      <div class="btns"><button class="sm" data-up="${r.id}">上传</button></div></td>
     <td class="a">${FLAGS.map(([k, off, on]) => `<button class="sm ${r[k] ? 'on' : ''}" data-flag="${k}" data-id="${r.id}">${r[k] ? on : off}</button> `).join('')}<button class="sm warn" data-del="${r.id}">删除</button>
       <div>${FLAGS.filter(([k]) => r.proof && r.proof[k]).map(([k, off, on]) => `<a class="pf" target="_blank" href="files/${encodeURIComponent(r.id)}/${enc(r.proof[k])}?inline=1">${on}凭证</a>`).join('')}</div></td>
   </tr>`;
@@ -179,11 +178,10 @@ async function upload(rid, list) {
 }
 document.addEventListener('click', async e => {
   const t = e.target.closest('.tab'); if (t) { S.topic = t.dataset.t; localStorage.setItem('dz_topic', S.topic); render(); return; }
-  const b = e.target.closest('[data-up],[data-updir],[data-del],[data-rm],[data-rmdir],[data-flag],[data-zip]'); if (!b) return;
+  const b = e.target.closest('[data-up],[data-del],[data-rm],[data-rmdir],[data-flag],[data-zip]'); if (!b) return;
   const find = id => S.records.find(r => r.id === id);
   try {
     if (b.dataset.up) { S.uploadTo = b.dataset.up; $('fileIn').value = ''; $('fileIn').click(); }
-    else if (b.dataset.updir) { S.uploadTo = b.dataset.updir; $('dirIn').value = ''; $('dirIn').click(); }
     else if (b.dataset.flag) {
       const r = find(b.dataset.id), k = b.dataset.flag;
       if (r[k]) { if (confirm('取消这个勾？')) { await api('api/records/' + r.id, { method: 'PUT', body: JSON.stringify({ [k]: false }) }); await refresh(); } }
@@ -214,7 +212,6 @@ $('proofIn').addEventListener('change', async () => {
   toast('上传凭证');
   try { await api('api/records/' + S.proofFor.rid + '/proof/' + S.proofFor.k, { method: 'POST', body: fd }); await refresh(); } catch (err) { toast(err.message); }
 });
-$('dirIn').addEventListener('change', () => { if (S.uploadTo && $('dirIn').files.length) upload(S.uploadTo, [...$('dirIn').files]); });
 $('aOk').onclick = async () => { try { await api('api/records', { method: 'POST', body: JSON.stringify({ topic: S.topic }) }); await refresh(); } catch (e) { toast(e.message); } };
 $('lOk').onclick = async () => { try { await api('api/login', { method: 'POST', body: JSON.stringify({ name: $('lName').value.trim() }) }); await boot(); } catch (e) { toast(e.message); } };
 $('lName').addEventListener('keydown', e => { if (e.key === 'Enter') $('lOk').click(); });
