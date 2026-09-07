@@ -4,7 +4,8 @@
 
 三个人 ltr、qyh、zjl 输名字就能进。A、B、C 三道题各一页，每一行是一个客户的需求，
 做完的沉到下面，每一行挂一个文件包。
-记录存 data/records.json，文件存 data/files/<行号>/<文件名>，登录态存 data/sessions.json。
+记录存 data/records.json，登录态存 data/sessions.json；文件存在 /data1/liutianrui/定制文件/<题>题/<序号>/，
+每一行有三个勾：定金、结账、完成。
 启动：python3 server.py --port 8771
 """
 import argparse
@@ -23,7 +24,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.join(HERE, "data")
-FILES = os.path.join(DATA, "files")
+FILES = os.path.join(os.path.dirname(HERE), "定制文件")   # 服务器上就是 /data1/liutianrui/定制文件
 INDEX = os.path.join(HERE, "index.html")
 PREFIX = "/dz"
 USERS = ("ltr", "qyh", "zjl")
@@ -51,6 +52,10 @@ def save(name, obj):
     with open(tmp, "w", encoding="utf-8") as f:
         json.dump(obj, f, ensure_ascii=False, indent=2)
     os.replace(tmp, p)
+
+
+def folder_of(r):
+    return os.path.join(FILES, r["topic"] + "题", str(r.get("seq", r["id"])))
 
 
 def safe_name(name):
@@ -135,8 +140,10 @@ class Handler(BaseHTTPRequestHandler):
             parts = [urllib.parse.unquote(x) for x in path.split("/")[2:]]
             if len(parts) != 2:
                 return self.fail("路径不对", 404)
-            fp = os.path.join(FILES, safe_name(parts[0]), safe_name(parts[1]))
-            if not os.path.isfile(fp):
+            with LOCK:
+                r = next((x for x in load("records.json", {"records": []})["records"] if x["id"] == parts[0]), None)
+            fp = os.path.join(folder_of(r), safe_name(parts[1])) if r else ""
+            if not fp or not os.path.isfile(fp):
                 return self.fail("文件不存在", 404)
             return self.send_file(fp, mimetypes.guess_type(fp)[0] or "application/octet-stream", download=parts[1])
         self.fail("没有这个地址", 404)
@@ -183,9 +190,13 @@ class Handler(BaseHTTPRequestHandler):
             if topic not in TOPICS:
                 return self.fail("题号不对")
             rec = {"id": secrets.token_hex(4), "topic": topic, "customer": customer, "need": need,
-                   "owner": str(b.get("owner", u)).strip()[:20] or u, "done": False, "files": [],
-                   "created": now(), "updated": now(), "updatedBy": u}
-            self.mutate(lambda d: d["records"].append(rec))
+                   "owner": str(b.get("owner", u)).strip()[:20] or u, "done": False, "deposit": False,
+                   "paid": False, "files": [], "created": now(), "updated": now(), "updatedBy": u}
+
+            def f(d):
+                rec["seq"] = 1 + max([x.get("seq", 0) for x in d["records"] if x["topic"] == topic] or [0])
+                d["records"].append(rec)
+            self.mutate(f)
             return self.send_json(rec)
         m = path.split("/")
         if len(m) == 5 and m[1:3] == ["api", "records"] and m[4] == "files":
@@ -211,8 +222,9 @@ class Handler(BaseHTTPRequestHandler):
                     r["need"] = str(b["need"]).strip()[:2000]
                 if "owner" in b:
                     r["owner"] = str(b["owner"]).strip()[:20]
-                if "done" in b:
-                    r["done"] = bool(b["done"])
+                for k in ("done", "deposit", "paid"):
+                    if k in b:
+                        r[k] = bool(b[k])
                 r["updated"], r["updatedBy"] = now(), u
                 box["rec"] = r
             self.mutate(f)
@@ -226,8 +238,10 @@ class Handler(BaseHTTPRequestHandler):
         m = [urllib.parse.unquote(x) for x in (self.route() or "").split("/")]
         if len(m) == 4 and m[1:3] == ["api", "records"]:
             def f(d):
+                for x in d["records"]:
+                    if x["id"] == m[3]:
+                        shutil.rmtree(folder_of(x), ignore_errors=True)
                 d["records"] = [x for x in d["records"] if x["id"] != m[3]]
-                shutil.rmtree(os.path.join(FILES, safe_name(m[3])), ignore_errors=True)
             self.mutate(f)
             return self.send_json({})
         if len(m) == 6 and m[1:3] == ["api", "records"] and m[4] == "files":
@@ -238,7 +252,7 @@ class Handler(BaseHTTPRequestHandler):
                 if not r:
                     return
                 r["files"] = [x for x in r.get("files", []) if x["name"] != name]
-                fp = os.path.join(FILES, safe_name(rid), name)
+                fp = os.path.join(folder_of(r), name)
                 if os.path.exists(fp):
                     os.remove(fp)
                 r["updated"], r["updatedBy"] = now(), u
@@ -267,7 +281,7 @@ class Handler(BaseHTTPRequestHandler):
             r = next((x for x in d["records"] if x["id"] == rid), None)
             if not r:
                 return self.fail("这一行不存在", 404)
-            folder = os.path.join(FILES, safe_name(rid))
+            folder = folder_of(r)
             os.makedirs(folder, exist_ok=True)
             names = []
             for fname, data in parse_multipart(ctype, body):
@@ -290,6 +304,7 @@ def main():
     ap.add_argument("--port", type=int, default=8771)
     a = ap.parse_args()
     os.makedirs(FILES, exist_ok=True)
+    os.makedirs(DATA, exist_ok=True)
     if not os.path.exists(os.path.join(DATA, "records.json")):
         save("records.json", {"records": []})
     print("定制协作平台 http://%s:%d" % (a.host, a.port))

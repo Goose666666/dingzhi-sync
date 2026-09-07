@@ -11,8 +11,10 @@
 
 - 进门只有一个密码框，输 ltr、qyh 或 zjl 都能进。
 - 顶上 A 题、B 题、C 题三页，每页一张表，点添加客户加一行，一行只有序号和文件包。
-- 每一行能上传文件、下载、删文件。点完成沉到已完成那一段下面，点恢复再回来。
-- 文件存在服务器 `/data1/liutianrui/dingzhi-sync/data/files/行号/文件名`，一次最多传 500 MB。
+- 每一行能上传文件、下载、删文件，右边三个勾：定金、结账、完成，点一下切换。完成的沉到
+  已完成那一段下面。
+- 文件存在服务器 `/data1/liutianrui/定制文件/A题/序号/文件名`，序号是这一题里第几个加的，
+  一次最多传 500 MB。
 
 ## 部署
 
@@ -24,7 +26,7 @@ ssh liutianrui@10.16.13.145 bash /data1/liutianrui/dingzhi-sync/start.sh
 ```
 
 `start.sh` 先杀旧进程再用 nohup 拉起。8080 那边的代理是 `proxy_patch.py` 打进
-`tuimian-web/serve.py` 的，改了那边要重跑 `tuimian-web/start.sh`。记录在 `data/records.json`，登录态在 `data/sessions.json`，能进的名字写死在 `server.py` 的 `USERS`，
-备份只需要拷走 `data` 目录。
+`tuimian-web/serve.py` 的，改了那边要重跑 `tuimian-web/start.sh`。记录在 `data/records.json`，登录态在 `data/sessions.json`，能进的密码写死在 `server.py` 的 `USERS`。
+备份拷 `data` 目录和 `/data1/liutianrui/定制文件`。
 
 服务器 `/data1` 只剩十几 G，磁盘剩余不到 1 GB 时上传会被拒。

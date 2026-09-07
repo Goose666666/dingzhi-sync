@@ -25,7 +25,8 @@ table{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(-
 th,td{padding:12px 14px;text-align:left;vertical-align:top;border-top:1px solid var(--line)}
 th{background:var(--soft);font-weight:700;border-top:0}
 td.n{width:80px;font-weight:700}
-td.a{width:130px;white-space:nowrap;text-align:right}
+td.a{width:330px;white-space:nowrap;text-align:right}
+button.on{background:var(--green);border-color:var(--green);color:#fff}
 tr.done td{color:var(--mute)}
 tr.sep td{background:var(--soft);color:var(--mute);padding:8px 14px;font-size:14px}
 .file{display:flex;align-items:center;gap:8px;margin:2px 0}
@@ -100,7 +101,7 @@ function render() {
   const tr = r => `<tr class="${r.done ? 'done' : ''}">
     <td class="n">${++n}</td>
     <td class="f">${(r.files || []).map(f => `<div class="file"><a href="files/${encodeURIComponent(r.id)}/${encodeURIComponent(f.name)}">${esc(f.name)}</a><span class="x" data-rm="${r.id}" data-name="${esc(f.name)}">删除</span></div>`).join('')}<button class="sm" data-up="${r.id}">上传</button></td>
-    <td class="a"><button class="sm" data-done="${r.id}">${r.done ? '恢复' : '完成'}</button> <button class="sm warn" data-del="${r.id}">删除</button></td>
+    <td class="a"><button class="sm ${r.deposit ? 'on' : ''}" data-flag="deposit" data-id="${r.id}">${r.deposit ? '已付定金' : '未付定金'}</button> <button class="sm ${r.paid ? 'on' : ''}" data-flag="paid" data-id="${r.id}">${r.paid ? '已结账' : '未结账'}</button> <button class="sm ${r.done ? 'on' : ''}" data-flag="done" data-id="${r.id}">${r.done ? '已完成' : '未完成'}</button> <button class="sm warn" data-del="${r.id}">删除</button></td>
   </tr>`;
   $('list').innerHTML = `<table>
     ${todo.map(tr).join('')}
@@ -113,11 +114,11 @@ async function addRow() {
 }
 document.addEventListener('click', async e => {
   const t = e.target.closest('.tab'); if (t) { S.topic = t.dataset.t; localStorage.setItem('dz_topic', S.topic); render(); return; }
-  const b = e.target.closest('[data-up],[data-del],[data-rm],[data-done]'); if (!b) return;
+  const b = e.target.closest('[data-up],[data-del],[data-rm],[data-flag]'); if (!b) return;
   const find = id => S.records.find(r => r.id === id);
   try {
     if (b.dataset.up) { S.uploadTo = b.dataset.up; $('fileIn').value = ''; $('fileIn').click(); }
-    else if (b.dataset.done) { const r = find(b.dataset.done); await api('api/records/' + r.id, { method: 'PUT', body: JSON.stringify({ done: !r.done }) }); await refresh(); }
+    else if (b.dataset.flag) { const r = find(b.dataset.id), k = b.dataset.flag; await api('api/records/' + r.id, { method: 'PUT', body: JSON.stringify({ [k]: !r[k] }) }); await refresh(); }
     else if (b.dataset.del) { const r = find(b.dataset.del); if (confirm('删除这一行和它的文件？')) { await api('api/records/' + r.id, { method: 'DELETE' }); await refresh(); } }
     else if (b.dataset.rm) { if (confirm('删除文件 ' + b.dataset.name + '？')) { await api('api/records/' + b.dataset.rm + '/files/' + encodeURIComponent(b.dataset.name), { method: 'DELETE' }); await refresh(); } }
   } catch (err) { toast(err.message); }
