@@ -137,14 +137,14 @@ async function api(path, opt = {}) {
 }
 function showLogin() { S.me = null; $('mLogin').classList.add('on'); $('bar').hidden = true; $('logBox').hidden = true; $('btnSet').hidden = true; $('btnOut').hidden = true; $('who').textContent = ''; $('list').innerHTML = ''; $('lName').focus(); }
 async function boot() {
-  const me = await api('/api/me');
+  const me = await api('api/me');
   if (!me.name) return showLogin();
   S.me = me; $('mLogin').classList.remove('on');
   $('who').textContent = me.name; $('btnSet').hidden = false; $('btnOut').hidden = false; $('bar').hidden = false; $('logBox').hidden = false;
   await refresh();
 }
 async function refresh() {
-  try { S.data = await api('/api/data'); render(); } catch (e) { $('list').innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
+  try { S.data = await api('api/data'); render(); } catch (e) { $('list').innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
 }
 function render() {
   const q = $('q').value.trim().toLowerCase(), fs = $('fs').value;
@@ -160,7 +160,7 @@ function render() {
 }
 function card(r) {
   const tpl = (r.template || '').charAt(0);
-  const files = (r.files || []).map(f => `<div class="file"><a href="/files/${encodeURIComponent(r.id)}/${encodeURIComponent(f.name)}">${esc(f.name)}</a><span class="meta">${(f.size / 1048576).toFixed(1)} MB ${esc(f.by)} ${fmt(f.at)}</span><span class="x" data-rm="${esc(r.id)}" data-name="${esc(f.name)}">删除</span></div>`).join('');
+  const files = (r.files || []).map(f => `<div class="file"><a href="files/${encodeURIComponent(r.id)}/${encodeURIComponent(f.name)}">${esc(f.name)}</a><span class="meta">${(f.size / 1048576).toFixed(1)} MB ${esc(f.by)} ${fmt(f.at)}</span><span class="x" data-rm="${esc(r.id)}" data-name="${esc(f.name)}">删除</span></div>`).join('');
   return `<div class="card">
     <div>
       <div class="t">${esc(r.version)} <span class="badge ${tpl}">${esc(r.template)}</span> <span class="pill ${esc(r.status)}">${esc(r.status)}</span></div>
@@ -188,8 +188,8 @@ async function submitEdit() {
   if (!v.topic || !v.version) { toast('题目和版本不能空'); return; }
   $('eOk').disabled = true;
   try {
-    if (S.editing) await api('/api/records/' + S.editing, { method: 'PUT', body: JSON.stringify(v) });
-    else await api('/api/records', { method: 'POST', body: JSON.stringify(v) });
+    if (S.editing) await api('api/records/' + S.editing, { method: 'PUT', body: JSON.stringify(v) });
+    else await api('api/records', { method: 'POST', body: JSON.stringify(v) });
     $('mEdit').classList.remove('on'); await refresh(); toast('已保存');
   } catch (e) { toast(e.message); }
   $('eOk').disabled = false;
@@ -200,11 +200,11 @@ async function uploadFiles(rid, list) {
   for (const f of list) { fd.append('file', f, f.name); total += f.size; }
   if (total > 500 * 1048576) { toast('一次最多传 500 MB'); return; }
   toast('上传中 ' + (total / 1048576).toFixed(1) + ' MB');
-  await api('/api/records/' + rid + '/files', { method: 'POST', body: fd });
+  await api('api/records/' + rid + '/files', { method: 'POST', body: fd });
   await refresh(); toast('上传完成');
 }
 async function loadMembers() {
-  const us = await api('/api/users');
+  const us = await api('api/users');
   $('members').innerHTML = us.map(u => `<div><span>${esc(u.name)} ${u.role === 'admin' ? '管理员' : ''}</span>${u.name === S.me.name ? '' : `<button class="warn" data-ru="${esc(u.name)}">删除</button>`}</div>`).join('');
 }
 document.addEventListener('click', async e => {
@@ -214,24 +214,24 @@ document.addEventListener('click', async e => {
   try {
     if (b.dataset.up) { S.uploadTo = b.dataset.up; $('fileIn').value = ''; $('fileIn').click(); }
     else if (b.dataset.ed) openEdit(find(b.dataset.ed));
-    else if (b.dataset.del) { const r = find(b.dataset.del); if (confirm(`删除 ${r.topic} ${r.version} 和它的文件？`)) { await api('/api/records/' + r.id, { method: 'DELETE' }); await refresh(); } }
-    else if (b.dataset.rm) { if (confirm('删除文件 ' + b.dataset.name + '？')) { await api('/api/records/' + b.dataset.rm + '/files/' + encodeURIComponent(b.dataset.name), { method: 'DELETE' }); await refresh(); } }
-    else if (b.dataset.ru) { if (confirm('删除成员 ' + b.dataset.ru + '？')) { await api('/api/users/' + encodeURIComponent(b.dataset.ru), { method: 'DELETE' }); await loadMembers(); } }
+    else if (b.dataset.del) { const r = find(b.dataset.del); if (confirm(`删除 ${r.topic} ${r.version} 和它的文件？`)) { await api('api/records/' + r.id, { method: 'DELETE' }); await refresh(); } }
+    else if (b.dataset.rm) { if (confirm('删除文件 ' + b.dataset.name + '？')) { await api('api/records/' + b.dataset.rm + '/files/' + encodeURIComponent(b.dataset.name), { method: 'DELETE' }); await refresh(); } }
+    else if (b.dataset.ru) { if (confirm('删除成员 ' + b.dataset.ru + '？')) { await api('api/users/' + encodeURIComponent(b.dataset.ru), { method: 'DELETE' }); await loadMembers(); } }
   } catch (err) { toast(err.message); }
 });
 document.addEventListener('change', async e => {
   const s = e.target.closest('[data-st]'); if (!s) return;
-  try { await api('/api/records/' + s.dataset.st, { method: 'PUT', body: JSON.stringify({ status: s.value }) }); await refresh(); toast('已改状态'); }
+  try { await api('api/records/' + s.dataset.st, { method: 'PUT', body: JSON.stringify({ status: s.value }) }); await refresh(); toast('已改状态'); }
   catch (err) { toast(err.message); }
 });
 $('fileIn').addEventListener('change', async () => { if (S.uploadTo && $('fileIn').files.length) { try { await uploadFiles(S.uploadTo, [...$('fileIn').files]); } catch (err) { toast(err.message); } } });
-$('lOk').onclick = async () => { try { await api('/api/login', { method: 'POST', body: JSON.stringify({ name: $('lName').value.trim(), password: $('lPwd').value }) }); $('lPwd').value = ''; await boot(); } catch (e) { toast(e.message); } };
+$('lOk').onclick = async () => { try { await api('api/login', { method: 'POST', body: JSON.stringify({ name: $('lName').value.trim(), password: $('lPwd').value }) }); $('lPwd').value = ''; await boot(); } catch (e) { toast(e.message); } };
 $('lPwd').addEventListener('keydown', e => { if (e.key === 'Enter') $('lOk').click(); });
-$('btnOut').onclick = async () => { await api('/api/logout', { method: 'POST', body: '{}' }); showLogin(); };
+$('btnOut').onclick = async () => { await api('api/logout', { method: 'POST', body: '{}' }); showLogin(); };
 $('btnSet').onclick = async () => { $('pOld').value = ''; $('pNew').value = ''; $('adminBox').hidden = S.me.role !== 'admin'; if (S.me.role === 'admin') await loadMembers(); $('mSet').classList.add('on'); };
 $('sClose').onclick = () => $('mSet').classList.remove('on');
-$('pOk').onclick = async () => { try { await api('/api/password', { method: 'POST', body: JSON.stringify({ old: $('pOld').value, new: $('pNew').value }) }); toast('密码已改'); $('pOld').value = ''; $('pNew').value = ''; } catch (e) { toast(e.message); } };
-$('uOk').onclick = async () => { try { await api('/api/users', { method: 'POST', body: JSON.stringify({ name: $('uName').value.trim(), password: $('uPwd').value }) }); $('uName').value = ''; $('uPwd').value = ''; await loadMembers(); toast('已加成员'); } catch (e) { toast(e.message); } };
+$('pOk').onclick = async () => { try { await api('api/password', { method: 'POST', body: JSON.stringify({ old: $('pOld').value, new: $('pNew').value }) }); toast('密码已改'); $('pOld').value = ''; $('pNew').value = ''; } catch (e) { toast(e.message); } };
+$('uOk').onclick = async () => { try { await api('api/users', { method: 'POST', body: JSON.stringify({ name: $('uName').value.trim(), password: $('uPwd').value }) }); $('uName').value = ''; $('uPwd').value = ''; await loadMembers(); toast('已加成员'); } catch (e) { toast(e.message); } };
 $('btnNew').onclick = () => openEdit(null);
 $('eCancel').onclick = () => $('mEdit').classList.remove('on');
 $('eOk').onclick = submitEdit;

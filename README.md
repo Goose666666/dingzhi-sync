@@ -2,7 +2,10 @@
 
 三个人一起做数模论文定制版时，用来记录每一版做到哪一步、由谁负责，文件直接传到服务器。
 
-网址：http://10.16.13.145:8771 ，校内网或连上校园 VPN 后打开。
+网址：http://10.16.13.145:8080/dz/ ，校内网或连上校园 VPN 后打开。
+
+服务器的防火墙只放行 22 和 8080，8080 已经被预推免网页占着，所以定制平台跑在本机
+8771，由 8080 上那个 `tuimian-web/serve.py` 把 `/dz` 路径原样转过去。
 
 ## 第一次使用
 
@@ -25,7 +28,8 @@ scp server.py index.html liutianrui@10.16.13.145:/data1/liutianrui/dingzhi-sync/
 ssh liutianrui@10.16.13.145 bash /data1/liutianrui/dingzhi-sync/start.sh
 ```
 
-`start.sh` 先杀旧进程再用 nohup 拉起。第一次启动会建 admin，密码在 `data/初始密码.txt`。
+`start.sh` 先杀旧进程再用 nohup 拉起。8080 那边的代理是 `proxy_patch.py` 打进
+`tuimian-web/serve.py` 的，改了那边要重跑 `tuimian-web/start.sh`。第一次启动会建 admin，密码在 `data/初始密码.txt`。
 记录在 `data/records.json`，账号在 `data/users.json`，登录态在 `data/sessions.json`，
 备份只需要拷走 `data` 目录。
 

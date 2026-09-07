@@ -27,6 +27,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.join(HERE, "data")
 FILES = os.path.join(DATA, "files")
 INDEX = os.path.join(HERE, "index.html")
+PREFIX = "/dz"          # 挤在 8080 的 /dz 路径下时，前面的代理会原样转来带前缀的路径
 MAX_UPLOAD = 500 * 1024 * 1024
 MIN_FREE = 1 * 1024 * 1024 * 1024
 STATUSES = ("待做", "在做", "待审", "完成")
@@ -92,6 +93,15 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self, fmt, *args):
         sys.stdout.write("%s %s %s\n" % (time.strftime("%H:%M:%S"), self.address_string(), fmt % args))
 
+    def route(self):
+        """去掉前缀后的路径。访问 /dz 不带斜杠时给 None，让调用方跳转到 /dz/。"""
+        p = urllib.parse.urlsplit(self.path).path
+        if p == PREFIX:
+            return None
+        if p.startswith(PREFIX + "/"):
+            p = p[len(PREFIX):]
+        return p
+
     # ---- 小工具 ----
     def send_json(self, obj, status=200):
         data = json.dumps(obj, ensure_ascii=False).encode("utf-8")
@@ -139,7 +149,12 @@ class Handler(BaseHTTPRequestHandler):
 
     # ---- 路由 ----
     def do_GET(self):
-        path = urllib.parse.urlsplit(self.path).path
+        path = self.route()
+        if path is None:
+            self.send_response(302)
+            self.send_header("Location", PREFIX + "/")
+            self.send_header("Content-Length", "0")
+            return self.end_headers()
         if path in ("/", "/index.html"):
             return self.send_file(INDEX, "text/html; charset=utf-8")
         if path == "/api/me":
@@ -185,7 +200,7 @@ class Handler(BaseHTTPRequestHandler):
             shutil.copyfileobj(f, self.wfile)
 
     def do_POST(self):
-        path = urllib.parse.urlsplit(self.path).path
+        path = self.route() or ""
         if path == "/api/login":
             b = self.body_json()
             name, pwd = str(b.get("name", "")).strip(), str(b.get("password", ""))
@@ -261,7 +276,7 @@ class Handler(BaseHTTPRequestHandler):
         u = self.need_user()
         if not u:
             return
-        m = urllib.parse.urlsplit(self.path).path.split("/")
+        m = (self.route() or "").split("/")
         if len(m) == 4 and m[1:3] == ["api", "records"]:
             b = self.body_json()
             rid = m[3]
@@ -290,7 +305,7 @@ class Handler(BaseHTTPRequestHandler):
         u = self.need_user()
         if not u:
             return
-        m = [urllib.parse.unquote(x) for x in urllib.parse.urlsplit(self.path).path.split("/")]
+        m = [urllib.parse.unquote(x) for x in (self.route() or "").split("/")]
         if len(m) == 4 and m[1:3] == ["api", "records"]:
             rid = m[3]
             box = {}
