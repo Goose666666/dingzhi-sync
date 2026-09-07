@@ -5,41 +5,69 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>定制协作</title>
 <style>
-:root{--ink:#1f2328;--mute:#7a838f;--line:#e2e5ea;--bg:#f4f5f7;--teal:#3f7f8c;--red:#b5433a;--green:#3f6f5b;--soft:#f0f3f4;--hover:#fafbfc}
+:root{--navy:#0b1220;--navy2:#111a2e;--ink:#0f172a;--mute:#64748b;--line:#e3e8ef;--bg:#f3f5f9;--card:#fff;--acc:#2f6df6;--acc2:#1f4fd8;--ok:#0f9d6e;--red:#d64545;--amber:#d98b1f;--chip:#eef2f8}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 "Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}
-header{background:#fff;border-bottom:1px solid var(--line);padding:0 28px;display:flex;align-items:center;gap:4px;height:58px;position:sticky;top:0;z-index:5}
-header h1{font-size:19px;margin:0 24px 0 0;font-weight:700}
-.tab{height:58px;padding:0 18px;border:0;border-bottom:3px solid transparent;background:none;font:inherit;font-size:16px;cursor:pointer;color:var(--mute)}
-.tab.on{color:var(--teal);border-bottom-color:var(--teal);font-weight:700}
-.tab .cnt{margin-left:4px;font-size:12px;background:var(--line);border-radius:999px;padding:1px 7px;color:var(--mute)}
-header .who{margin-left:auto;color:var(--mute)}
-main{max-width:1280px;margin:22px auto;padding:0 20px}
-button{height:38px;border:1px solid var(--line);border-radius:8px;padding:0 16px;font:inherit;background:#fff;cursor:pointer;color:var(--ink)}
-button.pri{background:var(--teal);border-color:var(--teal);color:#fff}
-button.sm{height:30px;padding:0 11px;font-size:13.5px}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:14.5px/1.5 Inter,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;font-variant-numeric:tabular-nums}
+a{color:var(--acc);text-decoration:none}
+button{height:36px;border:1px solid var(--line);border-radius:8px;padding:0 14px;font:inherit;background:#fff;cursor:pointer;color:var(--ink);transition:.12s}
+button:hover{border-color:#c9d2df;background:#fbfcfe}
+button.pri{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
+button.pri:hover{background:var(--acc2)}
+button.sm{height:30px;padding:0 11px;font-size:13px;border-radius:7px}
+button.ghost{border-color:transparent;background:transparent;color:var(--mute)}
+button.ghost:hover{background:var(--chip);color:var(--ink)}
 button.warn{color:var(--red)}
-button.on{background:var(--green);border-color:var(--green);color:#fff}
-input{border:1px solid var(--line);border-radius:8px;padding:0 10px;font:inherit;background:#fff;height:36px}
-input:focus{outline:2px solid #bcd6dc;border-color:var(--teal)}
-.add{display:flex;justify-content:flex-end;margin-bottom:14px}
+button.on{background:var(--ok);border-color:var(--ok);color:#fff;font-weight:600}
+input{border:1px solid var(--line);border-radius:8px;padding:0 10px;font:inherit;background:#fff;height:36px;color:var(--ink)}
+input:focus{outline:none;border-color:var(--acc);box-shadow:0 0 0 3px rgba(47,109,246,.15)}
+input::placeholder{color:#a3adbd}
+/* 布局 */
+.app{display:grid;grid-template-columns:224px 1fr;min-height:100vh}
+aside{background:linear-gradient(180deg,var(--navy),var(--navy2));color:#cbd5e1;display:flex;flex-direction:column;padding:22px 14px;position:sticky;top:0;height:100vh}
+.brand{display:flex;align-items:center;gap:10px;padding:4px 10px 22px;color:#fff;font-weight:700;font-size:17px;letter-spacing:.3px}
+.brand i{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,var(--acc),#7cc0ff);display:inline-block;box-shadow:0 4px 12px rgba(47,109,246,.45)}
+.tab{display:flex;align-items:center;gap:10px;width:100%;height:40px;padding:0 12px;margin:2px 0;border:0;border-radius:9px;background:transparent;color:#aab4c5;font-size:14.5px;text-align:left;justify-content:flex-start}
+.tab:hover{background:rgba(255,255,255,.06);color:#fff;border-color:transparent}
+.tab.on{background:rgba(47,109,246,.22);color:#fff;font-weight:600}
+.tab .k{width:22px;height:22px;border-radius:6px;background:rgba(255,255,255,.08);display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#e2e8f0}
+.tab.on .k{background:var(--acc)}
+.tab .cnt{margin-left:auto;font-size:11.5px;background:rgba(255,255,255,.12);border-radius:999px;padding:1px 8px;color:#e2e8f0}
+.tab .cnt[hidden]{display:none}
+.sep{height:1px;background:rgba(255,255,255,.08);margin:10px 8px}
+.me{margin-top:auto;display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:9px;background:rgba(255,255,255,.05)}
+.me .av{width:30px;height:30px;border-radius:50%;background:var(--acc);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;text-transform:uppercase}
+.me .nm{color:#fff;font-weight:600;flex:1}
+.me button{height:28px;padding:0 10px;font-size:12.5px;background:transparent;border-color:rgba(255,255,255,.18);color:#cbd5e1}
+.me button:hover{background:rgba(255,255,255,.08)}
+main{padding:26px 34px 60px;min-width:0}
+.top{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+.top h2{margin:0;font-size:22px;font-weight:700;letter-spacing:-.2px}
+.top .sub{color:var(--mute);font-size:13px;margin-top:2px}
 .add[hidden]{display:none}
-table{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden}
-th{padding:10px 14px;text-align:left;background:var(--soft);font-weight:700;font-size:14px;color:var(--mute)}
-td{padding:12px 14px;text-align:left;vertical-align:top;border-top:1px solid var(--line)}
-tr:hover td{background:var(--hover)}
-td.n{width:52px;font-weight:700;color:var(--mute)}
-td.note{width:210px}
+/* 行卡片 */
+table{width:100%;border-collapse:separate;border-spacing:0 10px}
+th{padding:0 14px 2px;text-align:left;font-size:12px;font-weight:600;color:var(--mute);letter-spacing:.4px;text-transform:uppercase}
+td{background:var(--card);padding:14px;vertical-align:top;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+tr td:first-child{border-left:1px solid var(--line);border-radius:12px 0 0 12px}
+tr td:last-child{border-right:1px solid var(--line);border-radius:0 12px 12px 0}
+tr:hover td{box-shadow:0 6px 18px -12px rgba(15,23,42,.25)}
+td.n{width:56px;font-weight:700;color:var(--mute);font-size:15px}
+td.note{width:220px}
 td.note input{width:100%}
-td.price{width:110px}
+td.price{width:120px}
 td.price input{width:100%}
-td.a,th.a{width:360px;text-align:right;white-space:nowrap}
-td.a .pfs{display:flex;gap:10px;justify-content:flex-end;margin-top:10px}
-td.a .pf{display:flex;flex-direction:column;align-items:center;gap:2px;color:var(--mute);text-decoration:none;font-size:12.5px}
-td.a .pf img{height:88px;max-width:140px;object-fit:cover;border:1px solid var(--line);border-radius:8px;background:#fff}
-tr.done td{color:var(--mute)}
+td.a,th.a{width:380px;text-align:right;white-space:nowrap}
+.steps{display:inline-flex;gap:6px}
+.steps button{height:30px;padding:0 12px;font-size:13px;border-radius:999px}
+.steps button.on::before{content:"✓ ";font-weight:700}
+td.a .del{margin-left:6px}
+td.a .pfs{display:flex;gap:10px;justify-content:flex-end;margin-top:12px}
+td.a .pf{display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--mute);font-size:12px}
+td.a .pf img{height:84px;max-width:132px;object-fit:cover;border:1px solid var(--line);border-radius:8px;background:#fff}
+tr.done td{background:#fbfcfe;color:var(--mute)}
 tr.done td .file a{color:var(--mute)}
-tr.sep td{background:var(--soft);color:var(--mute);padding:6px 14px;font-size:13px}
+tr.sep td{background:transparent;border:0;padding:6px 14px 0;font-size:12px;font-weight:600;color:var(--mute);letter-spacing:.4px;text-transform:uppercase;box-shadow:none}
 .tree{margin-bottom:8px}
 .tree details{margin:2px 0}
 .tree summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px;white-space:nowrap}
@@ -47,46 +75,62 @@ tr.sep td{background:var(--soft);color:var(--mute);padding:6px 14px;font-size:13
 .tree details[open]>summary::before{content:"▾"}
 .tree .in{padding-left:18px}
 .file{display:flex;align-items:center;gap:10px;margin:3px 0;white-space:nowrap}
-.file a,.file .op{color:var(--teal);text-decoration:none;cursor:pointer}
-.file .nm{overflow:hidden;text-overflow:ellipsis;max-width:320px}
-.file .x,.tree .x{color:var(--red);cursor:pointer;font-size:13px}
-.file .sz{color:var(--mute);font-size:13px}
+.file .nm{overflow:hidden;text-overflow:ellipsis;max-width:300px;font-weight:500}
+.file .op{color:var(--acc);cursor:pointer}
+.file .x,.tree .x{color:var(--red);cursor:pointer;font-size:12.5px}
+.file .sz{color:var(--mute);font-size:12.5px}
 .zip{padding-left:18px}
-.empty{color:var(--mute);text-align:center;padding:60px 0}
-table.sum td,table.sum th{text-align:right;color:var(--ink)}
-table.sum td:first-child,table.sum th:first-child{text-align:left;font-weight:700}
-table.sum tr.total td{font-weight:700}
+.empty{color:var(--mute);text-align:center;padding:70px 0;background:var(--card);border:1px dashed var(--line);border-radius:12px}
+/* 汇总 */
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px}
+.kpi .l{font-size:12.5px;color:var(--mute)}
+.kpi .v{font-size:26px;font-weight:700;margin-top:4px;letter-spacing:-.5px}
+.kpi .v small{font-size:13px;color:var(--mute);font-weight:500;margin-left:4px}
+table.sum{border-spacing:0;background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+table.sum th{padding:12px 16px;background:#f8fafc;text-align:right;text-transform:none;letter-spacing:0;font-size:13px}
+table.sum td{padding:12px 16px;text-align:right;border:0;border-top:1px solid var(--line);border-radius:0!important}
+table.sum td:first-child,table.sum th:first-child{text-align:left;font-weight:600}
+table.sum tr.total td{font-weight:700;background:#f8fafc}
+table.sum tr:hover td{box-shadow:none}
+/* 回收站 */
 table.trash td.k{width:70px;color:var(--mute)}
-table.trash td.w{width:110px}
+table.trash td.w{width:120px;font-weight:600}
 table.trash td.t{width:170px;color:var(--mute)}
 table.trash td.a{width:200px}
-.mask{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;align-items:center;justify-content:center;z-index:9}
+/* 登录 */
+.mask{position:fixed;inset:0;background:radial-gradient(1200px 600px at 20% -10%,#1b2a4d 0%,var(--navy) 55%);display:none;align-items:center;justify-content:center;z-index:9}
 .mask.on{display:flex}
-.dlg{background:#fff;border-radius:14px;padding:24px;width:min(420px,92vw);display:grid;gap:12px}
-.dlg input{width:100%;height:40px}
-.dlg .row{display:flex;gap:10px;justify-content:flex-end}
-#toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 18px;border-radius:10px;display:none;z-index:10}
+.dlg{background:#fff;border-radius:16px;padding:32px 30px 26px;width:min(380px,92vw);display:grid;gap:14px;box-shadow:0 30px 80px -30px rgba(0,0,0,.6)}
+.dlg .brand{padding:0 0 6px;color:var(--ink)}
+.dlg input{width:100%;height:42px}
+.dlg button{height:42px}
+#toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 18px;border-radius:10px;display:none;z-index:10;box-shadow:0 10px 30px -10px rgba(0,0,0,.5)}
+@media(max-width:900px){.app{grid-template-columns:1fr}aside{position:static;height:auto;flex-direction:row;flex-wrap:wrap;padding:12px}.brand{padding:4px 10px}.tab{width:auto}.me{margin:0 0 0 auto}main{padding:18px}.kpis{grid-template-columns:repeat(2,1fr)}}
 </style>
 </head>
 <body>
-<header>
-  <h1>定制协作</h1>
-  <button class="tab" data-t="A">A 题</button>
-  <button class="tab" data-t="B">B 题</button>
-  <button class="tab" data-t="C">C 题</button>
-  <button class="tab" data-t="S">汇总</button>
-  <button class="tab" data-t="T">回收站<span class="cnt" id="tcnt" hidden></span></button>
-  <span class="who" id="who"></span>
-  <button id="btnOut" hidden>退出</button>
-</header>
+<div class="app">
+<aside>
+  <div class="brand"><i></i>定制协作</div>
+  <button class="tab" data-t="A"><span class="k">A</span>A 题</button>
+  <button class="tab" data-t="B"><span class="k">B</span>B 题</button>
+  <button class="tab" data-t="C"><span class="k">C</span>C 题</button>
+  <div class="sep"></div>
+  <button class="tab" data-t="S"><span class="k">Σ</span>汇总</button>
+  <button class="tab" data-t="T"><span class="k">↺</span>回收站<span class="cnt" id="tcnt" hidden></span></button>
+  <div class="me" id="me" hidden><span class="av" id="av"></span><span class="nm" id="who"></span><button id="btnOut">退出</button></div>
+</aside>
 <main>
-  <div class="add" id="add" hidden><button class="pri" id="aOk">添加客户</button></div>
+  <div class="top"><div><h2 id="title"></h2><div class="sub" id="sub"></div></div><div class="add" id="add" hidden><button class="pri" id="aOk">＋ 添加客户</button></div></div>
   <div id="list"></div>
 </main>
+</div>
 
 <div class="mask" id="mLogin"><div class="dlg">
+  <div class="brand"><i></i>定制协作</div>
   <input id="lName" type="password" placeholder="密码" autocomplete="current-password">
-  <div class="row"><button class="pri" id="lOk">进入</button></div>
+  <button class="pri" id="lOk">进入</button>
 </div></div>
 
 <input type="file" id="fileIn" multiple hidden>
@@ -95,7 +139,8 @@ table.trash td.a{width:200px}
 
 <script>
 const S = { me: '', topic: localStorage.getItem('dz_topic') || 'A', records: [], trash: [], uploadTo: null, closed: new Set(), zips: {}, proofFor: null };
-const FLAGS = [['deposit', '未付定金', '已付定金'], ['paid', '未结账', '已结账'], ['done', '未完成', '已完成']];
+const FLAGS = [['deposit', '定金', '已付定金'], ['paid', '结账', '已结账'], ['done', '完成', '已完成']];
+const TITLES = { A: 'A 题', B: 'B 题', C: 'C 题', S: '汇总', T: '回收站' };
 const money = n => (Math.round((n || 0) * 100) / 100).toLocaleString('zh-CN');
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -112,12 +157,12 @@ async function api(path, opt = {}) {
   if (!r.ok) throw new Error(j.error || ('出错 ' + r.status));
   return j;
 }
-function showLogin() { S.me = ''; $('mLogin').classList.add('on'); $('add').hidden = true; $('btnOut').hidden = true; $('who').textContent = ''; $('list').innerHTML = ''; $('lName').focus(); }
+function showLogin() { S.me = ''; $('mLogin').classList.add('on'); $('add').hidden = true; $('me').hidden = true; $('list').innerHTML = ''; $('title').textContent = ''; $('sub').textContent = ''; $('lName').focus(); }
 async function boot() {
   const me = await api('api/me');
   if (!me.name) return showLogin();
   S.me = me.name; $('mLogin').classList.remove('on');
-  $('who').textContent = me.name; $('btnOut').hidden = false;
+  $('who').textContent = me.name; $('av').textContent = me.name.slice(0, 1); $('me').hidden = false;
   await refresh();
 }
 async function refresh() {
@@ -158,34 +203,46 @@ function dirRows(rid, node, prefix) {
   return h;
 }
 function renderSummary() {
-  const line = (name, rs) => `<tr class="${name === '合计' ? 'total' : ''}"><td>${name}</td><td>${rs.length}</td><td>${rs.filter(r => r.done).length}</td><td>${money(rs.reduce((a, r) => a + (r.price || 0), 0))}</td><td>${money(rs.filter(r => r.paid).reduce((a, r) => a + (r.price || 0), 0))}</td><td>${money(rs.filter(r => !r.paid).reduce((a, r) => a + (r.price || 0), 0))}</td><td>${rs.filter(r => r.deposit && !r.paid).length}</td></tr>`;
-  $('list').innerHTML = `<table class="sum"><tr><th></th><th>客户</th><th>已完成</th><th>定价合计</th><th>已结账</th><th>未结账</th><th>只付了定金</th></tr>
-    ${['A', 'B', 'C'].map(k => line(k + ' 题', S.records.filter(r => r.topic === k))).join('')}${line('合计', S.records)}</table>`;
+  const all = S.records, sum = (rs, f) => rs.filter(f || (() => true)).reduce((a, r) => a + (r.price || 0), 0);
+  $('sub').textContent = `${all.length} 个客户 · ${all.filter(r => r.done).length} 个已完成`;
+  const line = (name, rs) => `<tr class="${name === '合计' ? 'total' : ''}"><td>${name}</td><td>${rs.length}</td><td>${rs.filter(r => r.done).length}</td><td>${money(sum(rs))}</td><td>${money(sum(rs, r => r.paid))}</td><td>${money(sum(rs, r => !r.paid))}</td><td>${rs.filter(r => r.deposit && !r.paid).length}</td></tr>`;
+  $('list').innerHTML = `<div class="kpis">
+      <div class="kpi"><div class="l">定价合计</div><div class="v">${money(sum(all))}<small>元</small></div></div>
+      <div class="kpi"><div class="l">已结账</div><div class="v">${money(sum(all, r => r.paid))}<small>元</small></div></div>
+      <div class="kpi"><div class="l">未结账</div><div class="v">${money(sum(all, r => !r.paid))}<small>元</small></div></div>
+      <div class="kpi"><div class="l">只付了定金</div><div class="v">${all.filter(r => r.deposit && !r.paid).length}<small>个</small></div></div>
+    </div>
+    <table class="sum"><tr><th></th><th>客户</th><th>已完成</th><th>定价合计</th><th>已结账</th><th>未结账</th><th>只付了定金</th></tr>
+    ${['A', 'B', 'C'].map(k => line(k + ' 题', all.filter(r => r.topic === k))).join('')}${line('合计', all)}</table>`;
 }
 function renderTrash() {
+  $('sub').textContent = S.trash.length ? `${S.trash.length} 项` : '';
   if (!S.trash.length) { $('list').innerHTML = '<div class="empty">回收站是空的</div>'; return; }
+  const acts = t => `<td class="a"><button class="sm" data-restore="${t.id}">恢复</button> <button class="sm warn" data-purge="${t.id}">彻底删除</button></td>`;
   const row = t => t.kind === 'row'
-    ? `<tr><td class="k">客户</td><td class="w">${t.rec.topic} 题 ${t.rec.seq} 号</td><td>${esc(t.rec.note || '')}${t.rec.price ? ' · ' + money(t.rec.price) : ''}${(t.rec.files || []).length ? ' · ' + t.rec.files.length + ' 个文件' : ''}</td><td class="t">${esc(t.by)} ${when(t.at)}</td><td class="a"><button class="sm" data-restore="${t.id}">恢复</button> <button class="sm warn" data-purge="${t.id}">彻底删除</button></td></tr>`
-    : `<tr><td class="k">文件</td><td class="w">${t.topic} 题 ${t.seq} 号</td><td>${esc(t.file.name)} <span class="sz">${mb(t.file.size)}</span></td><td class="t">${esc(t.by)} ${when(t.at)}</td><td class="a"><button class="sm" data-restore="${t.id}">恢复</button> <button class="sm warn" data-purge="${t.id}">彻底删除</button></td></tr>`;
+    ? `<tr><td class="k">客户</td><td class="w">${t.rec.topic} 题 ${t.rec.seq} 号</td><td>${esc(t.rec.note || '')}${t.rec.price ? ' · ' + money(t.rec.price) : ''}${(t.rec.files || []).length ? ' · ' + t.rec.files.length + ' 个文件' : ''}</td><td class="t">${esc(t.by)} ${when(t.at)}</td>${acts(t)}</tr>`
+    : `<tr><td class="k">文件</td><td class="w">${t.topic} 题 ${t.seq} 号</td><td>${esc(t.file.name)} <span class="sz">${mb(t.file.size)}</span></td><td class="t">${esc(t.by)} ${when(t.at)}</td>${acts(t)}</tr>`;
   $('list').innerHTML = `<table class="trash"><tr><th></th><th>位置</th><th>内容</th><th>删除</th><th class="a"></th></tr>${S.trash.map(row).join('')}</table>`;
 }
 function render() {
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t.dataset.t === S.topic));
   $('tcnt').hidden = !S.trash.length; $('tcnt').textContent = S.trash.length;
+  $('title').textContent = TITLES[S.topic];
   $('add').hidden = !S.me || S.topic === 'S' || S.topic === 'T';
   if (S.topic === 'S') return renderSummary();
   if (S.topic === 'T') return renderTrash();
   const rows = S.records.filter(r => r.topic === S.topic);
   const todo = rows.filter(r => !r.done).sort((a, b) => a.created.localeCompare(b.created));
   const done = rows.filter(r => r.done).sort((a, b) => b.updated.localeCompare(a.updated));
-  if (!rows.length) { $('list').innerHTML = ''; return; }
+  $('sub').textContent = rows.length ? `${todo.length} 个在做 · ${done.length} 个已完成` : '';
+  if (!rows.length) { $('list').innerHTML = '<div class="empty">还没有客户</div>'; return; }
   let n = 0;
   const tr = r => `<tr class="${r.done ? 'done' : ''}">
-    <td class="n">${++n}</td>
+    <td class="n">${String(++n).padStart(2, '0')}</td>
     <td class="note"><input value="${esc(r.note || '')}" placeholder="备注" data-note="${r.id}"></td>
     <td class="price"><input type="number" min="0" step="1" value="${r.price || ''}" placeholder="定价" data-price="${r.id}"></td>
     <td><div class="tree">${dirRows(r.id, tree(r.files || []), '')}</div><button class="sm" data-up="${r.id}">上传</button></td>
-    <td class="a">${FLAGS.map(([k, off, on]) => `<button class="sm ${r[k] ? 'on' : ''}" data-flag="${k}" data-id="${r.id}">${r[k] ? on : off}</button> `).join('')}<button class="sm warn" data-del="${r.id}">删除</button>
+    <td class="a"><span class="steps">${FLAGS.map(([k, off, on]) => `<button class="${r[k] ? 'on' : ''}" data-flag="${k}" data-id="${r.id}">${r[k] ? on : off}</button>`).join('')}</span><button class="sm ghost warn del" data-del="${r.id}">删除</button>
       <div class="pfs">${FLAGS.filter(([k]) => r.proof && r.proof[k]).map(([k, off, on]) => `<a class="pf" target="_blank" href="files/${encodeURIComponent(r.id)}/${enc(r.proof[k])}?inline=1"><img src="files/${encodeURIComponent(r.id)}/${enc(r.proof[k])}?inline=1" alt="${on}"><span>${on}</span></a>`).join('')}</div></td>
   </tr>`;
   $('list').innerHTML = `<table><tr><th></th><th>备注</th><th>定价</th><th>文件</th><th class="a">状态</th></tr>${todo.map(tr).join('')}${done.length ? `<tr class="sep"><td colspan="5">已完成</td></tr>` + done.map(tr).join('') : ''}</table>`;
