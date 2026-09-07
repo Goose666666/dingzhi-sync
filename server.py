@@ -20,6 +20,7 @@ import sys
 import threading
 import time
 import urllib.parse
+import zipfile
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -31,6 +32,8 @@ USERS = ("ltr", "qyh", "zjl")
 TOPICS = ("A", "B", "C")
 MAX_UPLOAD = 500 * 1024 * 1024
 MIN_FREE = 1 * 1024 * 1024 * 1024
+TEXT_EXT = (".txt", ".md", ".tex", ".py", ".json", ".csv", ".log", ".html", ".htm", ".js", ".css", ".bib", ".m", ".cls", ".sty", ".bat", ".sh", ".yml", ".yaml", ".ini", ".cfg")
+INLINE_EXT = (".pdf", ".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp", ".bmp") + TEXT_EXT
 LOCK = threading.Lock()
 
 
@@ -61,6 +64,31 @@ def folder_of(r):
 def safe_name(name):
     name = os.path.basename(name.replace("\\", "/")).strip()
     return name.replace("..", "_") or "未命名"
+
+
+def safe_rel(path):
+    """带子目录的相对路径，去掉 .. 和空段，统一用 / 连。"""
+    parts = [safe_name(p) for p in path.replace("\\", "/").split("/") if p.strip() and p.strip() not in (".", "..")]
+    return "/".join(parts) or "未命名"
+
+
+def zip_name(info):
+    n = info.filename
+    if not (info.flag_bits & 0x800):
+        try:
+            n = n.encode("cp437").decode("gbk")
+        except (UnicodeEncodeError, UnicodeDecodeError):
+            pass
+    return n
+
+
+def inline_type(name):
+    ext = os.path.splitext(name)[1].lower()
+    if ext in TEXT_EXT:
+        return "text/plain; charset=utf-8"
+    if ext in INLINE_EXT:
+        return mimetypes.guess_type(name)[0] or "application/octet-stream"
+    return None
 
 
 def parse_multipart(ctype, body):
@@ -134,19 +162,62 @@ class Handler(BaseHTTPRequestHandler):
                 return
             with LOCK:
                 return self.send_json(load("records.json", {"records": []}))
+        q = urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query)
         if path.startswith("/files/"):
             if not self.need_user():
                 return
             parts = [urllib.parse.unquote(x) for x in path.split("/")[2:]]
-            if len(parts) != 2:
+            if len(parts) < 2:
                 return self.fail("路径不对", 404)
+            rel = safe_rel("/".join(parts[1:]))
             with LOCK:
                 r = next((x for x in load("records.json", {"records": []})["records"] if x["id"] == parts[0]), None)
-            fp = os.path.join(folder_of(r), safe_name(parts[1])) if r else ""
+            fp = os.path.join(folder_of(r), *rel.split("/")) if r else ""
             if not fp or not os.path.isfile(fp):
                 return self.fail("文件不存在", 404)
-            return self.send_file(fp, mimetypes.guess_type(fp)[0] or "application/octet-stream", download=parts[1])
+            entry = q.get("entry", [""])[0]
+            if entry:
+                return self.send_zip_entry(fp, entry)
+            base = rel.split("/")[-1]
+            ctype = inline_type(base) if q.get("inline") else None
+            return self.send_file(fp, ctype or mimetypes.guess_type(fp)[0] or "application/octet-stream",
+                                  download=None if ctype else base)
+        m = path.split("/")
+        if len(m) == 5 and m[1:3] == ["api", "records"] and m[4] == "zip":
+            if not self.need_user():
+                return
+            rel = safe_rel(urllib.parse.unquote(q.get("name", [""])[0]))
+            with LOCK:
+                r = next((x for x in load("records.json", {"records": []})["records"] if x["id"] == m[3]), None)
+            fp = os.path.join(folder_of(r), *rel.split("/")) if r else ""
+            if not fp or not os.path.isfile(fp):
+                return self.fail("文件不存在", 404)
+            try:
+                with zipfile.ZipFile(fp) as z:
+                    items = [{"name": zip_name(i), "size": i.file_size} for i in z.infolist() if not i.is_dir()]
+            except zipfile.BadZipFile:
+                return self.fail("不是 zip 文件")
+            return self.send_json({"entries": items})
         self.fail("没有这个地址", 404)
+
+    def send_zip_entry(self, fp, entry):
+        try:
+            with zipfile.ZipFile(fp) as z:
+                info = next((i for i in z.infolist() if zip_name(i) == entry), None)
+                if info is None:
+                    return self.fail("压缩包里没有这个文件", 404)
+                data = z.read(info)
+        except zipfile.BadZipFile:
+            return self.fail("不是 zip 文件")
+        base = entry.split("/")[-1]
+        ctype = inline_type(base)
+        self.send_response(200)
+        self.send_header("Content-Type", ctype or "application/octet-stream")
+        self.send_header("Content-Length", str(len(data)))
+        if not ctype:
+            self.send_header("Content-Disposition", "attachment; filename*=UTF-8''" + urllib.parse.quote(base))
+        self.end_headers()
+        self.wfile.write(data)
 
     def send_file(self, fp, ctype, download=None):
         self.send_response(200)
@@ -191,7 +262,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self.fail("题号不对")
             rec = {"id": secrets.token_hex(4), "topic": topic, "customer": customer, "need": need,
                    "owner": str(b.get("owner", u)).strip()[:20] or u, "done": False, "deposit": False,
-                   "paid": False, "files": [], "created": now(), "updated": now(), "updatedBy": u}
+                   "paid": False, "price": 0, "proof": {}, "files": [], "created": now(), "updated": now(), "updatedBy": u}
 
             def f(d):
                 rec["seq"] = 1 + max([x.get("seq", 0) for x in d["records"] if x["topic"] == topic] or [0])
@@ -201,6 +272,8 @@ class Handler(BaseHTTPRequestHandler):
         m = path.split("/")
         if len(m) == 5 and m[1:3] == ["api", "records"] and m[4] == "files":
             return self.upload(m[3], u)
+        if len(m) == 6 and m[1:3] == ["api", "records"] and m[4] == "proof" and m[5] in ("done", "deposit", "paid"):
+            return self.upload(m[3], u, proof=m[5])
         self.fail("没有这个地址", 404)
 
     def do_PUT(self):
@@ -220,14 +293,26 @@ class Handler(BaseHTTPRequestHandler):
                     r["customer"] = str(b["customer"]).strip()[:60]
                 if "need" in b:
                     r["need"] = str(b["need"]).strip()[:2000]
+                if "note" in b:
+                    r["note"] = str(b["note"]).strip()[:500]
                 if "owner" in b:
                     r["owner"] = str(b["owner"]).strip()[:20]
+                if "price" in b:
+                    try:
+                        r["price"] = max(0.0, float(b["price"] or 0))
+                    except (TypeError, ValueError):
+                        pass
                 for k in ("done", "deposit", "paid"):
                     if k in b:
+                        if b[k] and not r.get("proof", {}).get(k):
+                            box["err"] = "先传凭证照片"
+                            return
                         r[k] = bool(b[k])
                 r["updated"], r["updatedBy"] = now(), u
                 box["rec"] = r
             self.mutate(f)
+            if box.get("err"):
+                return self.fail(box["err"])
             return self.send_json(box.get("rec") or {})
         self.fail("没有这个地址", 404)
 
@@ -244,17 +329,22 @@ class Handler(BaseHTTPRequestHandler):
                 d["records"] = [x for x in d["records"] if x["id"] != m[3]]
             self.mutate(f)
             return self.send_json({})
-        if len(m) == 6 and m[1:3] == ["api", "records"] and m[4] == "files":
-            rid, name = m[3], safe_name(m[5])
+        if len(m) >= 6 and m[1:3] == ["api", "records"] and m[4] == "files":
+            rid, rel = m[3], safe_rel("/".join(m[5:]))
+            is_dir = "dir=1" in urllib.parse.urlsplit(self.path).query
 
             def g(d):
                 r = next((x for x in d["records"] if x["id"] == rid), None)
                 if not r:
                     return
-                r["files"] = [x for x in r.get("files", []) if x["name"] != name]
-                fp = os.path.join(folder_of(r), name)
-                if os.path.exists(fp):
-                    os.remove(fp)
+                if is_dir:
+                    r["files"] = [x for x in r.get("files", []) if not x["name"].startswith(rel + "/")]
+                    shutil.rmtree(os.path.join(folder_of(r), *rel.split("/")), ignore_errors=True)
+                else:
+                    r["files"] = [x for x in r.get("files", []) if x["name"] != rel]
+                    fp = os.path.join(folder_of(r), *rel.split("/"))
+                    if os.path.exists(fp):
+                        os.remove(fp)
                 r["updated"], r["updatedBy"] = now(), u
             self.mutate(g)
             return self.send_json({})
@@ -266,7 +356,7 @@ class Handler(BaseHTTPRequestHandler):
             fn(d)
             save("records.json", d)
 
-    def upload(self, rid, u):
+    def upload(self, rid, u, proof=None):
         n = int(self.headers.get("Content-Length") or 0)
         if n > MAX_UPLOAD:
             return self.fail("一次最多传 500 MB", 413)
@@ -287,12 +377,21 @@ class Handler(BaseHTTPRequestHandler):
             for fname, data in parse_multipart(ctype, body):
                 if not fname:
                     continue
-                name = safe_name(fname)
-                with open(os.path.join(folder, name), "wb") as f:
+                name = safe_rel(fname)
+                if proof:
+                    ext = os.path.splitext(name)[1].lower() or ".jpg"
+                    name = "凭证/%s-%s%s" % ({"done": "完成", "deposit": "定金", "paid": "结账"}[proof],
+                                             time.strftime("%Y%m%d-%H%M%S"), ext)
+                fp = os.path.join(folder, *name.split("/"))
+                os.makedirs(os.path.dirname(fp), exist_ok=True)
+                with open(fp, "wb") as f:
                     f.write(data)
                 r["files"] = [x for x in r.get("files", []) if x["name"] != name]
                 r["files"].append({"name": name, "size": len(data), "by": u, "at": now()})
                 names.append(name)
+                if proof:
+                    r.setdefault("proof", {})[proof] = name
+                    r[proof] = True
             r["updated"], r["updatedBy"] = now(), u
             save("records.json", d)
         return self.send_json({"files": names})
