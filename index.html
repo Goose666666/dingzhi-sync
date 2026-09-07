@@ -20,18 +20,13 @@ button.sm{height:32px;padding:0 12px;font-size:14px}
 button.warn{color:var(--red)}
 button:disabled{opacity:.5;cursor:default}
 input,textarea{border:1px solid var(--line);border-radius:8px;padding:0 12px;font:inherit;background:#fff;height:40px}
-.add{display:grid;grid-template-columns:200px 1fr auto;gap:10px;margin-bottom:18px}
+.add{display:flex;justify-content:flex-end;margin-bottom:18px}
 table{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden}
 th,td{padding:12px 14px;text-align:left;vertical-align:top;border-top:1px solid var(--line)}
 th{background:var(--soft);font-weight:700;border-top:0}
-td.n{width:56px;color:var(--mute)}
-td.c{width:180px;font-weight:700}
-td.o{width:80px;color:var(--mute)}
-td.f{width:300px}
-td.a{width:150px;white-space:nowrap}
-td.need{white-space:pre-wrap}
+td.n{width:80px;font-weight:700}
+td.a{width:130px;white-space:nowrap;text-align:right}
 tr.done td{color:var(--mute)}
-tr.done td.c{font-weight:400;text-decoration:line-through}
 tr.sep td{background:var(--soft);color:var(--mute);padding:8px 14px;font-size:14px}
 .file{display:flex;align-items:center;gap:8px;margin:2px 0}
 .file a{color:var(--teal);text-decoration:none;word-break:break-all}
@@ -58,25 +53,14 @@ tr.sep td{background:var(--soft);color:var(--mute);padding:8px 14px;font-size:14
 </header>
 <main>
   <div class="add" id="add" hidden>
-    <input id="aCustomer" placeholder="客户">
-    <input id="aNeed" placeholder="需求">
-    <button class="pri" id="aOk">添加</button>
+    <button class="pri" id="aOk">添加客户</button>
   </div>
   <div id="list"></div>
 </main>
 
 <div class="mask" id="mLogin"><div class="dlg">
-  <h2>你是谁</h2>
-  <input id="lName" placeholder="ltr / qyh / zjl">
+  <input id="lName" type="password" placeholder="密码" autocomplete="current-password">
   <div class="row"><button class="pri" id="lOk">进入</button></div>
-</div></div>
-
-<div class="mask" id="mEdit"><div class="dlg">
-  <h2>编辑</h2>
-  <input id="eCustomer" placeholder="客户">
-  <textarea id="eNeed" placeholder="需求"></textarea>
-  <input id="eOwner" placeholder="负责人">
-  <div class="row"><button id="eCancel">取消</button><button class="pri" id="eOk">保存</button></div>
 </div></div>
 
 <input type="file" id="fileIn" multiple hidden>
@@ -111,36 +95,30 @@ function render() {
   const rows = S.records.filter(r => r.topic === S.topic);
   const todo = rows.filter(r => !r.done).sort((a, b) => a.created.localeCompare(b.created));
   const done = rows.filter(r => r.done).sort((a, b) => b.updated.localeCompare(a.updated));
-  if (!rows.length) { $('list').innerHTML = '<div class="empty">还没有客户</div>'; return; }
+  if (!rows.length) { $('list').innerHTML = ''; return; }
   let n = 0;
   const tr = r => `<tr class="${r.done ? 'done' : ''}">
     <td class="n">${++n}</td>
-    <td class="c">${esc(r.customer)}</td>
-    <td class="need">${esc(r.need)}</td>
-    <td class="o">${esc(r.owner)}</td>
     <td class="f">${(r.files || []).map(f => `<div class="file"><a href="files/${encodeURIComponent(r.id)}/${encodeURIComponent(f.name)}">${esc(f.name)}</a><span class="x" data-rm="${r.id}" data-name="${esc(f.name)}">删除</span></div>`).join('')}<button class="sm" data-up="${r.id}">上传</button></td>
-    <td class="a"><button class="sm" data-done="${r.id}">${r.done ? '恢复' : '完成'}</button> <button class="sm" data-ed="${r.id}">编辑</button> <button class="sm warn" data-del="${r.id}">删除</button></td>
+    <td class="a"><button class="sm" data-done="${r.id}">${r.done ? '恢复' : '完成'}</button> <button class="sm warn" data-del="${r.id}">删除</button></td>
   </tr>`;
-  $('list').innerHTML = `<table><tr><th></th><th>客户</th><th>需求</th><th>负责人</th><th>文件包</th><th></th></tr>
+  $('list').innerHTML = `<table>
     ${todo.map(tr).join('')}
-    ${done.length ? `<tr class="sep"><td colspan="6">已完成</td></tr>` + done.map(tr).join('') : ''}
+    ${done.length ? `<tr class="sep"><td colspan="3">已完成</td></tr>` + done.map(tr).join('') : ''}
   </table>`;
 }
 async function addRow() {
-  const customer = $('aCustomer').value.trim(), need = $('aNeed').value.trim();
-  if (!customer) { toast('客户不能空'); return; }
-  try { await api('api/records', { method: 'POST', body: JSON.stringify({ topic: S.topic, customer, need }) }); $('aCustomer').value = ''; $('aNeed').value = ''; await refresh(); }
+  try { await api('api/records', { method: 'POST', body: JSON.stringify({ topic: S.topic }) }); await refresh(); }
   catch (e) { toast(e.message); }
 }
 document.addEventListener('click', async e => {
   const t = e.target.closest('.tab'); if (t) { S.topic = t.dataset.t; localStorage.setItem('dz_topic', S.topic); render(); return; }
-  const b = e.target.closest('[data-up],[data-ed],[data-del],[data-rm],[data-done]'); if (!b) return;
+  const b = e.target.closest('[data-up],[data-del],[data-rm],[data-done]'); if (!b) return;
   const find = id => S.records.find(r => r.id === id);
   try {
     if (b.dataset.up) { S.uploadTo = b.dataset.up; $('fileIn').value = ''; $('fileIn').click(); }
     else if (b.dataset.done) { const r = find(b.dataset.done); await api('api/records/' + r.id, { method: 'PUT', body: JSON.stringify({ done: !r.done }) }); await refresh(); }
-    else if (b.dataset.ed) { const r = find(b.dataset.ed); S.editing = r.id; $('eCustomer').value = r.customer; $('eNeed').value = r.need; $('eOwner').value = r.owner; $('mEdit').classList.add('on'); }
-    else if (b.dataset.del) { const r = find(b.dataset.del); if (confirm(`删除 ${r.customer} 这一行和它的文件？`)) { await api('api/records/' + r.id, { method: 'DELETE' }); await refresh(); } }
+    else if (b.dataset.del) { const r = find(b.dataset.del); if (confirm('删除这一行和它的文件？')) { await api('api/records/' + r.id, { method: 'DELETE' }); await refresh(); } }
     else if (b.dataset.rm) { if (confirm('删除文件 ' + b.dataset.name + '？')) { await api('api/records/' + b.dataset.rm + '/files/' + encodeURIComponent(b.dataset.name), { method: 'DELETE' }); await refresh(); } }
   } catch (err) { toast(err.message); }
 });
@@ -152,17 +130,10 @@ $('fileIn').addEventListener('change', async () => {
   toast('上传中');
   try { await api('api/records/' + S.uploadTo + '/files', { method: 'POST', body: fd }); await refresh(); toast('已上传'); } catch (err) { toast(err.message); }
 });
-$('eOk').onclick = async () => {
-  try { await api('api/records/' + S.editing, { method: 'PUT', body: JSON.stringify({ customer: $('eCustomer').value.trim(), need: $('eNeed').value.trim(), owner: $('eOwner').value.trim() }) }); $('mEdit').classList.remove('on'); await refresh(); }
-  catch (e) { toast(e.message); }
-};
-$('eCancel').onclick = () => $('mEdit').classList.remove('on');
 $('aOk').onclick = addRow;
-$('aNeed').addEventListener('keydown', e => { if (e.key === 'Enter') addRow(); });
 $('lOk').onclick = async () => { try { await api('api/login', { method: 'POST', body: JSON.stringify({ name: $('lName').value.trim() }) }); await boot(); } catch (e) { toast(e.message); } };
 $('lName').addEventListener('keydown', e => { if (e.key === 'Enter') $('lOk').click(); });
 $('btnOut').onclick = () => { document.cookie = 'dz_sid=; Path=/; Max-Age=0'; showLogin(); };
-$('mEdit').addEventListener('click', e => { if (e.target === $('mEdit')) $('mEdit').classList.remove('on'); });
 boot();
 </script>
 </body>

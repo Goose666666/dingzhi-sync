@@ -157,7 +157,7 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/login":
             name = str(self.body_json().get("name", "")).strip().lower()
             if name not in USERS:
-                return self.fail("只有 ltr、qyh、zjl 能进", 401)
+                return self.fail("密码不对", 401)
             token = secrets.token_urlsafe(24)
             with LOCK:
                 sessions = load("sessions.json", {})
@@ -180,8 +180,8 @@ class Handler(BaseHTTPRequestHandler):
             topic = str(b.get("topic", "")).strip().upper()
             customer = str(b.get("customer", "")).strip()[:60]
             need = str(b.get("need", "")).strip()[:2000]
-            if topic not in TOPICS or not customer:
-                return self.fail("客户不能空")
+            if topic not in TOPICS:
+                return self.fail("题号不对")
             rec = {"id": secrets.token_hex(4), "topic": topic, "customer": customer, "need": need,
                    "owner": str(b.get("owner", u)).strip()[:20] or u, "done": False, "files": [],
                    "created": now(), "updated": now(), "updatedBy": u}
@@ -205,7 +205,7 @@ class Handler(BaseHTTPRequestHandler):
                 r = next((x for x in d["records"] if x["id"] == m[3]), None)
                 if not r:
                     return
-                if "customer" in b and str(b["customer"]).strip():
+                if "customer" in b:
                     r["customer"] = str(b["customer"]).strip()[:60]
                 if "need" in b:
                     r["need"] = str(b["need"]).strip()[:2000]
