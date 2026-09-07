@@ -65,6 +65,7 @@ td.a .del{margin-left:6px}
 td.a .pfs{display:flex;gap:10px;justify-content:flex-end;margin-top:12px}
 td.a .pf{display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--mute);font-size:12px}
 td.a .pf img{height:84px;max-width:132px;object-fit:cover;border:1px solid var(--line);border-radius:8px;background:#fff}
+td.a .pf .broken{display:inline-flex;align-items:center;justify-content:center;height:84px;width:120px;border:1px dashed var(--line);border-radius:8px;color:var(--acc);font-size:13px}
 tr.done td{background:#fbfcfe;color:var(--mute)}
 tr.done td .file a{color:var(--mute)}
 tr.sep td{background:transparent;border:0;padding:6px 14px 0;font-size:12px;font-weight:600;color:var(--mute);letter-spacing:.4px;text-transform:uppercase;box-shadow:none}
@@ -243,7 +244,7 @@ function render() {
     <td class="price"><input type="number" min="0" step="1" value="${r.price || ''}" placeholder="定价" data-price="${r.id}"></td>
     <td><div class="tree">${dirRows(r.id, tree(r.files || []), '')}</div><button class="sm" data-up="${r.id}">上传</button></td>
     <td class="a"><span class="steps">${FLAGS.map(([k, off, on]) => `<button class="${r[k] ? 'on' : ''}" data-flag="${k}" data-id="${r.id}">${r[k] ? on : off}</button>`).join('')}</span><button class="sm ghost warn del" data-del="${r.id}">删除</button>
-      <div class="pfs">${FLAGS.filter(([k]) => r.proof && r.proof[k]).map(([k, off, on]) => `<a class="pf" target="_blank" href="files/${encodeURIComponent(r.id)}/${enc(r.proof[k])}?inline=1"><img src="files/${encodeURIComponent(r.id)}/${enc(r.proof[k])}?inline=1" alt="${on}"><span>${on}</span></a>`).join('')}</div></td>
+      <div class="pfs">${FLAGS.filter(([k]) => r.proof && r.proof[k]).map(([k, off, on]) => `<a class="pf" target="_blank" href="files/${encodeURIComponent(r.id)}/${enc(r.proof[k])}?inline=1"><img src="files/${encodeURIComponent(r.id)}/${enc(r.proof[k])}?inline=1" alt="${on}" onerror="this.outerHTML='<span class=broken>打开图片</span>'"><span>${on}</span></a>`).join('')}</div></td>
   </tr>`;
   $('list').innerHTML = `<table><tr><th></th><th>备注</th><th>定价</th><th>文件</th><th class="a">状态</th></tr>${todo.map(tr).join('')}${done.length ? `<tr class="sep"><td colspan="5">已完成</td></tr>` + done.map(tr).join('') : ''}</table>`;
 }
