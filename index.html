@@ -72,7 +72,7 @@ td.note .nw input{flex:1;min-width:0}
 .gd:hover{background:#fff5f5}
 .gd.on{background:var(--red);border-color:var(--red);color:#fff;font-weight:600}
 tr.gold td:first-child{box-shadow:inset 3px 0 0 var(--red)}
-.gdtag{margin-left:6px;font-size:11.5px;color:#fff;background:var(--red);border-radius:999px;padding:1px 7px;font-weight:600;white-space:nowrap}
+.gdtag{font-size:11.5px;color:#fff;background:var(--red);border-radius:999px;padding:1px 7px;font-weight:600;white-space:nowrap}
 .steps button.on::before{content:"✓ ";font-weight:700}
 td.a .del{margin-left:6px}
 td.a .pfs{display:flex;gap:10px;justify-content:flex-end;margin-top:12px}
@@ -148,14 +148,14 @@ table.trash td.a{width:200px}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px}
 .tile{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;cursor:pointer;position:relative;min-height:112px;display:flex;flex-direction:column;gap:6px;transition:.12s}
 .tile:hover{border-color:#c9d2df;box-shadow:0 8px 20px -14px rgba(15,23,42,.35)}
-.tile .ic{width:40px;height:32px;border-radius:6px;position:relative}
+.tile .ic{width:40px;height:32px;border-radius:6px;position:relative;flex:none}
 .tile.dir .ic{background:linear-gradient(180deg,#ffd35c,#f5b91e);border-radius:4px 6px 6px 6px}
 .tile.dir .ic::before{content:"";position:absolute;left:0;top:-6px;width:18px;height:8px;background:#f5b91e;border-radius:3px 3px 0 0}
 .tile.f .ic{background:#eef2f8;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:var(--mute);width:32px;height:38px;border-radius:5px}
 .tile.f.pdf .ic{color:#d64545;border-color:#f3c4c4;background:#fff5f5}
 .tile.f.zip .ic{color:#8a5a12;border-color:#f0dcb0;background:#fff9ea}
 .tile.f.tex .ic,.tile.f.py .ic{color:var(--acc);border-color:#c7d8fb;background:#f2f6ff}
-.tile .nm{font-weight:600;word-break:break-all;line-height:1.35}
+.tile .nm{font-weight:600;word-break:break-all;line-height:1.35;display:flex;flex-wrap:wrap;align-items:center;gap:6px}
 .tile .mt{font-size:12px;color:var(--mute);margin-top:auto}
 .tile .ops{position:absolute;top:8px;right:8px;left:8px;display:none;gap:4px;flex-wrap:wrap;justify-content:flex-end}
 .tile:hover .ops{display:flex}
@@ -170,13 +170,13 @@ table.trash td.a{width:200px}
 .zone.done{color:#0b6e4e}.zone.done .n{background:var(--ok)}
 .tile.rv0{background:#fffaf0;border-color:#f1dcb6}.tile.rv0 .ic{background:linear-gradient(180deg,#f7c76a,#e39a1f)}.tile.rv0 .ic::before{background:#e39a1f}
 .tile.rv1{background:#f2fbf6;border-color:#bfe4d1}.tile.rv1 .ic{background:linear-gradient(180deg,#5ecb9d,#149a67)}.tile.rv1 .ic::before{background:#149a67}
-.tile .rv{font-size:12px;font-weight:600}.tile.rv0 .rv{color:var(--amber)}.tile.rv1 .rv{color:var(--ok)}
+.tile .rv{font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px;flex-wrap:wrap}.tile.rv0 .rv{color:var(--amber)}.tile.rv1 .rv{color:var(--ok)}
 /* 冲国奖：整个文件夹变红，压过上面两种状态色 */
-.tile.dir.gd{background:#fff4f4;border-color:#eeb4b4}
-.tile.dir.gd .ic{background:linear-gradient(180deg,#ef7f7f,#d64545)}
-.tile.dir.gd .ic::before{background:#d64545}
-.tile.dir.gd .nm{color:var(--red)}
-.tile.dir.gd .rv{color:#c96a6a}
+.tile.dir.gold{background:#fff4f4;border-color:#eeb4b4}
+.tile.dir.gold .ic{background:linear-gradient(180deg,#ef7f7f,#d64545)}
+.tile.dir.gold .ic::before{background:#d64545}
+.tile.dir.gold .nm{color:var(--red)}
+.tile.dir.gold .rv{color:#c96a6a}
 .zipbox{grid-column:1/-1;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 16px}
 /* 从文件库选 */
 .mask.pick{background:rgba(15,23,42,.45)}
@@ -415,10 +415,11 @@ function renderLib() {
   const RV = /^定制稿\/[ABC]题$/.test(d.path);
   const dirTile = x => {
     const p = d.path ? d.path + '/' + x.name : x.name;
-    const rvLine = RV ? `<div class="rv">${x.review ? '已审核 ' + when(x.review.at) + ' · ' + esc(x.review.by) : '未审核'}</div>` : '';
+    const gdTag = x.gold ? '<span class="gdtag">冲国奖</span>' : '';
+    const rvLine = RV ? `<div class="rv">${x.review ? '已审核 ' + when(x.review.at) + ' · ' + esc(x.review.by) : '未审核'}${gdTag}</div>` : '';
     const rvOp = RV ? `<span class="${x.review ? '' : 'ok'}" data-rv="${esc(p)}" data-on="${x.review ? 0 : 1}">${x.review ? '撤销审核' : '确认审核'}</span>` : '';
     const gdOp = RV ? `<span class="${x.gold ? 'x' : ''}" data-gd="${esc(p)}" data-on="${x.gold ? 0 : 1}">${x.gold ? '取消冲国奖' : '冲国奖'}</span>` : '';
-    return `<div class="tile dir ${RV ? (x.review ? 'rv1' : 'rv0') : ''}${x.gold ? ' gd' : ''}" data-go="${esc(p)}"><div class="ic"></div><div class="nm">${esc(x.name)}${x.gold ? '<span class="gdtag">冲国奖</span>' : ''}</div>${rvLine}<div class="mt">${x.count} 项</div>${parts.length && !FIXED.includes(p) ? `<div class="ops">${gdOp}${rvOp}<span data-lmv="${esc(p)}">改名</span><span class="x" data-ldel="${esc(p)}">删除</span></div>` : ''}</div>`;
+    return `<div class="tile dir ${RV ? (x.review ? 'rv1' : 'rv0') : ''}${x.gold ? ' gold' : ''}" data-go="${esc(p)}"><div class="ic"></div><div class="nm">${esc(x.name)}</div>${rvLine}<div class="mt">${x.count} 项</div>${parts.length && !FIXED.includes(p) ? `<div class="ops">${gdOp}${rvOp}<span data-lmv="${esc(p)}">改名</span><span class="x" data-ldel="${esc(p)}">删除</span></div>` : ''}</div>`;
   };
   const fileTile = x => {
     const p = d.path + '/' + x.name, ext = (x.name.split('.').pop() || '').toLowerCase(), url = 'lib/' + enc(p);
