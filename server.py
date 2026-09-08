@@ -47,6 +47,21 @@ def now():
     return time.strftime("%Y-%m-%dT%H:%M:%S")
 
 
+FLAG_CN = {"done": "完成", "deposit": "定金", "paid": "结账"}
+LOG_MAX = 800
+
+
+def log(d, u, what, rid=None, path=None, where=""):
+    """一条操作记下谁、什么时候、做了什么、在哪儿。"""
+    d.setdefault("log", []).insert(0, {"id": secrets.token_hex(4), "at": now(), "by": u,
+                                       "what": what, "rid": rid, "path": path, "where": where})
+    del d["log"][LOG_MAX:]
+
+
+def where_of(r):
+    return "%s 题 %s 号" % (r.get("topic", ""), r.get("seq", ""))
+
+
 def load(name, default):
     p = os.path.join(DATA, name)
     if not os.path.exists(p):
@@ -195,6 +210,7 @@ class Handler(BaseHTTPRequestHandler):
             with LOCK:
                 d = load("records.json", {"records": []})
                 d.setdefault("trash", [])
+                d["log"] = d.get("log", [])[:200]
                 return self.send_json(d)
         q = urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query)
         if path.startswith("/files/"):
@@ -421,6 +437,7 @@ class Handler(BaseHTTPRequestHandler):
                 used += [t["rec"].get("seq", 0) for t in d.get("trash", []) if t["kind"] == "row" and t["rec"]["topic"] == topic]
                 rec["seq"] = 1 + max(used or [0])
                 d["records"].append(rec)
+                log(d, u, "加了一行", rid=rec["id"], where=where_of(rec))
             self.mutate(f)
             return self.send_json(rec)
         m = path.split("/")
@@ -440,6 +457,8 @@ class Handler(BaseHTTPRequestHandler):
             if fp is None or not os.path.isdir(fp) or name.startswith("."):
                 return self.fail("目录不对")
             os.makedirs(os.path.join(fp, name), exist_ok=True)
+            sub = (rel + "/" + name) if rel else name
+            self.mutate(lambda d: log(d, u, "新建文件夹 %s" % name, path=sub, where=sub))
             return self.send_json({})
         if path == "/api/lib/rename":
             b = self.body_json()
@@ -456,6 +475,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self.fail("这个名字已经有了")
             os.replace(fp, dst)
             new = "/".join(rel.split("/")[:-1] + [name])
+            self.mutate(lambda d: log(d, u, "改名 %s → %s" % (rel.split("/")[-1], name), path=new, where=new))
 
             def h(d):
                 for key in ("review", "gold"):
@@ -478,6 +498,8 @@ class Handler(BaseHTTPRequestHandler):
                     rv[rel] = {"by": u, "at": now()}
                 else:
                     rv.pop(rel, None)
+                cn = "审核" if key == "review" else "冲国奖"
+                log(d, u, ("确认" + cn) if b.get("on") else ("取消" + cn), path=rel, where=rel)
             self.mutate(h)
             return self.send_json({})
         if path == "/api/lib/upload":
@@ -505,6 +527,9 @@ class Handler(BaseHTTPRequestHandler):
                 with open(dst, "wb") as f:
                     f.write(data)
                 names.append(name)
+            if names:
+                self.mutate(lambda d: log(d, u, "传了 %d 个文件到 %s" % (len(names), rel or "文件库"),
+                                          path=rel, where=rel or "文件库"))
             return self.send_json({"files": names})
         self.fail("没有这个地址", 404)
 
@@ -525,15 +550,23 @@ class Handler(BaseHTTPRequestHandler):
                     r["customer"] = str(b["customer"]).strip()[:60]
                 if "need" in b:
                     r["need"] = str(b["need"]).strip()[:2000]
+                acts = []
+                if "note" in b and str(b["note"]).strip()[:500] != r.get("note", ""):
+                    acts.append("改了备注")
                 if "note" in b:
                     r["note"] = str(b["note"]).strip()[:500]
                 if "owner" in b:
                     r["owner"] = str(b["owner"]).strip()[:20]
                 if "price" in b:
                     try:
-                        r["price"] = max(0.0, float(b["price"] or 0))
+                        v = max(0.0, float(b["price"] or 0))
+                        if v != r.get("price", 0):
+                            acts.append("定价改成 %s" % (int(v) if v == int(v) else v))
+                        r["price"] = v
                     except (TypeError, ValueError):
                         pass
+                if "gold" in b and bool(b["gold"]) != bool(r.get("gold")):
+                    acts.append("标了冲国奖" if b["gold"] else "取消了冲国奖")
                 if "gold" in b:
                     r["gold"] = bool(b["gold"])
                 for k in ("done", "deposit", "paid"):
@@ -541,8 +574,12 @@ class Handler(BaseHTTPRequestHandler):
                         if b[k] and not r.get("proof", {}).get(k):
                             box["err"] = "先传凭证照片"
                             return
+                        if bool(b[k]) != bool(r.get(k)):
+                            acts.append(("勾了" if b[k] else "取消了") + FLAG_CN[k])
                         r[k] = bool(b[k])
                 r["updated"], r["updatedBy"] = now(), u
+                for x in acts:
+                    log(d, u, x, rid=r["id"], where=where_of(r))
                 box["rec"] = r
             self.mutate(f)
             if box.get("err"):
@@ -560,6 +597,7 @@ class Handler(BaseHTTPRequestHandler):
                 for x in d["records"]:
                     if x["id"] == m[3]:
                         d["trash"].insert(0, {"id": secrets.token_hex(4), "kind": "row", "at": now(), "by": u, "rec": x})
+                        log(d, u, "删了这一行", rid=x["id"], where=where_of(x))
                 d["records"] = [x for x in d["records"] if x["id"] != m[3]]
             self.mutate(f)
             return self.send_json({})
@@ -590,6 +628,9 @@ class Handler(BaseHTTPRequestHandler):
                 r["files"] = [x for x in r.get("files", []) if x["name"] not in names]
                 if is_dir:
                     shutil.rmtree(os.path.join(folder_of(r), *rel.split("/")), ignore_errors=True)
+                if hit:
+                    log(d, u, "删了%s %s" % ("文件夹" if is_dir else "文件", rel.split("/")[-1]),
+                        rid=r["id"], where=where_of(r))
                 r["updated"], r["updatedBy"] = now(), u
             self.mutate(g)
             return self.send_json({})
@@ -610,6 +651,7 @@ class Handler(BaseHTTPRequestHandler):
                 gd = d.get("gold", {}).pop(rel, None)
                 d["trash"].insert(0, {"id": tid, "kind": "lib", "at": now(), "by": u, "path": rel,
                                       "isdir": isdir, "size": size, "review": rv, "gold": gd})
+                log(d, u, "删了%s %s" % ("文件夹" if isdir else "文件", rel.split("/")[-1]), path=rel, where=rel)
             self.mutate(h)
             return self.send_json({})
         if len(m) == 4 and m[1:3] == ["api", "trash"]:
@@ -626,6 +668,7 @@ class Handler(BaseHTTPRequestHandler):
                     if os.path.exists(fp):
                         os.remove(fp)
                 d["trash"] = [x for x in d["trash"] if x["id"] != m[3]]
+                log(d, u, "从回收站彻底删除", where=t.get("path") or (where_of(t["rec"]) if t["kind"] == "row" else ""))
             self.mutate(h)
             return self.send_json({})
         self.fail("没有这个地址", 404)
@@ -672,6 +715,7 @@ class Handler(BaseHTTPRequestHandler):
                     r[t["proof"]] = True
                 r["updated"], r["updatedBy"] = now(), u
             d["trash"] = [y for y in d["trash"] if y["id"] != tid]
+            log(d, u, "从回收站恢复", where=t.get("path") or (where_of(t["rec"]) if t["kind"] == "row" else ""))
         self.mutate(f)
         if box.get("err"):
             return self.fail(box["err"])
@@ -719,6 +763,8 @@ class Handler(BaseHTTPRequestHandler):
                     r["files"].append({"name": relname, "size": os.path.getsize(dst), "by": u, "at": now()})
                     added.append(relname)
             r["updated"], r["updatedBy"] = now(), u
+            if added:
+                log(d, u, "从文件库拿了 %d 项" % len(added), rid=r["id"], where=where_of(r))
             save("records.json", d)
         return self.send_json({"files": added})
 
@@ -759,6 +805,9 @@ class Handler(BaseHTTPRequestHandler):
                     r.setdefault("proof", {})[proof] = name
                     r[proof] = True
             r["updated"], r["updatedBy"] = now(), u
+            if names:
+                log(d, u, ("传了凭证，勾了" + FLAG_CN[proof]) if proof else "传了 %d 个文件" % len(names),
+                    rid=r["id"], where=where_of(r))
             save("records.json", d)
         return self.send_json({"files": names})
 

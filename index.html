@@ -112,6 +112,13 @@ table.trash td.k{width:70px;color:var(--mute)}
 table.trash td.w{width:120px;font-weight:600}
 table.trash td.t{width:170px;color:var(--mute)}
 table.trash td.a{width:200px}
+/* 操作记录 */
+.who{font-size:12px;color:var(--mute);margin-top:10px}
+.logs{display:flex;flex-direction:column;gap:2px}
+.lg{display:grid;grid-template-columns:120px 60px 1fr 220px;gap:12px;align-items:baseline;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 14px}
+.lg .t{color:var(--mute);font-size:13px}
+.lg .by{font-weight:600}
+.lg .wh{color:var(--mute);font-size:13px;text-align:right;word-break:break-all}
 /* 拖进来 */
 [data-flag].drop{border-color:var(--acc);box-shadow:0 0 0 3px rgba(47,109,246,.2)}
 tr.drop td{box-shadow:inset 0 0 0 2px var(--acc)}
@@ -271,6 +278,11 @@ tr.drop{box-shadow:inset 0 0 0 2px var(--acc)}
   .crumb{flex-wrap:wrap;row-gap:8px}
   .libbar{flex-wrap:wrap}
   .sks,.pps{grid-template-columns:1fr}
+  .lg{grid-template-columns:1fr auto;gap:2px 10px;padding:11px 13px}
+  .lg .t{order:3;grid-column:1}
+  .lg .by{order:1}
+  .lg .w{order:2;grid-column:2;text-align:right}
+  .lg .wh{order:4;grid-column:2;text-align:right}
   .pp .cv{height:150px}
   .dlg.wide{width:96vw;padding:20px 16px 18px}
   .pklist{max-height:56vh}
@@ -289,6 +301,7 @@ tr.drop{box-shadow:inset 0 0 0 2px var(--acc)}
   <div class="sep"></div>
   <button class="tab" data-t="S"><span class="k">Σ</span>汇总</button>
   <button class="tab" data-t="T"><span class="k">↺</span>回收站<span class="cnt" id="tcnt" hidden></span></button>
+  <button class="tab" data-t="G"><span class="k">≡</span>记录</button>
   <div class="sep"></div>
   <button class="tab" data-t="L"><span class="k">▤</span>文件库</button>
   <button class="tab" data-t="P"><span class="k">◆</span>优秀论文</button>
@@ -323,7 +336,7 @@ tr.drop{box-shadow:inset 0 0 0 2px var(--acc)}
 const S = { me: '', topic: 'A', records: [], trash: [], uploadTo: null, closed: new Set(), zips: {}, proofFor: null };
 function readHash() {
   const h = decodeURIComponent(location.hash.slice(1));
-  const m = h.match(/^([ABCSTLKP])(?:\/(.*))?$/);
+  const m = h.match(/^([ABCSTLKPG])(?:\/(.*))?$/);
   if (m) { S.topic = m[1]; S.libPath = m[1] === 'L' ? (m[2] || '') : ''; }
   else { S.topic = localStorage.getItem('dz_topic') || 'A'; S.libPath = ''; }
 }
@@ -339,7 +352,7 @@ window.addEventListener('popstate', () => {
   readHash(); refresh();
 });
 const FLAGS = [['deposit', '定金', '已付定金'], ['paid', '结账', '已结账'], ['done', '完成', '已完成']];
-const TITLES = { A: 'A 题', B: 'B 题', C: 'C 题', S: '汇总', T: '回收站', L: '文件库', K: '技能', P: '优秀论文' };
+const TITLES = { A: 'A 题', B: 'B 题', C: 'C 题', S: '汇总', T: '回收站', G: '记录', L: '文件库', K: '技能', P: '优秀论文' };
 S.libPath = ''; S.lib = null; S.libZip = null; readHash(); history.replaceState({ h: hashOf() }, '', hashOf());
 const money = n => (Math.round((n || 0) * 100) / 100).toLocaleString('zh-CN');
 const $ = id => document.getElementById(id);
@@ -366,7 +379,7 @@ async function boot() {
   await refresh();
 }
 async function refresh() {
-  try { const d = await api('api/data'); S.records = d.records; S.trash = d.trash || []; render(); }
+  try { const d = await api('api/data'); S.records = d.records; S.trash = d.trash || []; S.log = d.log || []; render(); }
   catch (e) { $('list').innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
 }
 function tree(files) {
@@ -414,6 +427,14 @@ function renderSummary() {
     </div>
     <div class="scroll"><table class="sum"><tr class="hd"><th></th><th>客户</th><th>已完成</th><th>定价合计</th><th>已结账</th><th>未结账</th><th>只付了定金</th></tr>
     ${['A', 'B', 'C'].map(k => line(k + ' 题', all.filter(r => r.topic === k))).join('')}${line('合计', all)}</table></div>`;
+}
+function renderLog() {
+  const rows = S.log || [];
+  $('sub').textContent = rows.length ? `${rows.length} 条` : '';
+  if (!rows.length) { $('list').innerHTML = '<div class="empty">还没有记录</div>'; return; }
+  $('list').innerHTML = `<div class="logs">${rows.map(x => `<div class="lg">
+    <span class="t">${when(x.at)}</span><span class="by">${esc(x.by)}</span>
+    <span class="w">${esc(x.what)}</span><span class="wh">${esc(x.where || '')}</span></div>`).join('')}</div>`;
 }
 function renderTrash() {
   $('sub').textContent = S.trash.length ? `${S.trash.length} 项` : '';
@@ -542,6 +563,7 @@ function render() {
   if (S.topic === 'P') return loadPapers();
   if (S.topic === 'S') return renderSummary();
   if (S.topic === 'T') return renderTrash();
+  if (S.topic === 'G') return renderLog();
   const rows = S.records.filter(r => r.topic === S.topic);
   const first = (a, b) => (b.gold ? 1 : 0) - (a.gold ? 1 : 0);        // 冲国奖的排在最前面
   const todo = rows.filter(r => !r.done).sort((a, b) => first(a, b) || a.created.localeCompare(b.created));
@@ -549,13 +571,17 @@ function render() {
   $('sub').textContent = rows.length ? `${todo.length} 个在做 · ${done.length} 个已完成` : '';
   if (!rows.length) { $('list').innerHTML = '<div class="empty">还没有客户</div>'; return; }
   let n = 0;
+  const lastOp = rid => {
+    const x = (S.log || []).find(y => y.rid === rid);
+    return x ? `<div class="who">${esc(x.by)} ${esc(x.what)} · ${when(x.at)}</div>` : '';
+  };
   const tr = r => `<tr class="${r.done ? 'done' : ''}${r.gold ? ' gold' : ''}" data-row="${r.id}">
     <td class="n">${String(++n).padStart(2, '0')}</td>
     <td class="note"><div class="nw"><button class="gd ${r.gold ? 'on' : ''}" data-gold="${r.id}" title="冲国奖">${r.gold ? '冲国奖' : '☆'}</button><input value="${esc(r.note || '')}" placeholder="备注" data-note="${r.id}"></div></td>
     <td class="price"><input type="number" min="0" step="1" value="${r.price || ''}" placeholder="定价" data-price="${r.id}"></td>
     <td><div class="tree">${dirRows(r.id, tree(r.files || []), '')}</div><button class="sm" data-up="${r.id}">上传</button> <button class="sm" data-pick="${r.id}">从文件库选</button></td>
     <td class="a"><span class="steps">${FLAGS.map(([k, off, on]) => `<button class="${r[k] ? 'on' : ''}" data-flag="${k}" data-id="${r.id}">${r[k] ? on : off}</button>`).join('')}</span><button class="sm ghost warn del" data-del="${r.id}">删除</button>
-      <div class="pfs">${FLAGS.filter(([k]) => r.proof && r.proof[k]).map(([k, off, on]) => `<a class="pf" target="_blank" href="files/${encodeURIComponent(r.id)}/${enc(r.proof[k])}?inline=1"><img src="files/${encodeURIComponent(r.id)}/${enc(r.proof[k])}?inline=1" alt="${on}" onerror="this.outerHTML='<span class=broken>打开图片</span>'"><span>${on}</span></a>`).join('')}</div></td>
+      ${lastOp(r.id)}<div class="pfs">${FLAGS.filter(([k]) => r.proof && r.proof[k]).map(([k, off, on]) => `<a class="pf" target="_blank" href="files/${encodeURIComponent(r.id)}/${enc(r.proof[k])}?inline=1"><img src="files/${encodeURIComponent(r.id)}/${enc(r.proof[k])}?inline=1" alt="${on}" onerror="this.outerHTML='<span class=broken>打开图片</span>'"><span>${on}</span></a>`).join('')}</div></td>
   </tr>`;
   $('list').innerHTML = `<table class="rows"><tr class="hd"><th></th><th>备注</th><th>定价</th><th>文件</th><th class="a">状态</th></tr>${todo.map(tr).join('')}${done.length ? `<tr class="sep"><td colspan="5">已完成</td></tr>` + done.map(tr).join('') : ''}</table>`;
 }
