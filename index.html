@@ -112,6 +112,11 @@ table.trash td.k{width:70px;color:var(--mute)}
 table.trash td.w{width:120px;font-weight:600}
 table.trash td.t{width:170px;color:var(--mute)}
 table.trash td.a{width:200px}
+/* 拖进来 */
+[data-flag].drop{border-color:var(--acc);box-shadow:0 0 0 3px rgba(47,109,246,.2)}
+tr.drop td{box-shadow:inset 0 0 0 2px var(--acc)}
+tr.drop{box-shadow:inset 0 0 0 2px var(--acc)}
+#list.drop{outline:2px dashed var(--acc);outline-offset:8px;border-radius:12px}
 /* 优秀论文 */
 .pps{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px}
 .pp{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;display:flex;flex-direction:column}
@@ -544,7 +549,7 @@ function render() {
   $('sub').textContent = rows.length ? `${todo.length} 个在做 · ${done.length} 个已完成` : '';
   if (!rows.length) { $('list').innerHTML = '<div class="empty">还没有客户</div>'; return; }
   let n = 0;
-  const tr = r => `<tr class="${r.done ? 'done' : ''}${r.gold ? ' gold' : ''}">
+  const tr = r => `<tr class="${r.done ? 'done' : ''}${r.gold ? ' gold' : ''}" data-row="${r.id}">
     <td class="n">${String(++n).padStart(2, '0')}</td>
     <td class="note"><div class="nw"><button class="gd ${r.gold ? 'on' : ''}" data-gold="${r.id}" title="冲国奖">${r.gold ? '冲国奖' : '☆'}</button><input value="${esc(r.note || '')}" placeholder="备注" data-note="${r.id}"></div></td>
     <td class="price"><input type="number" min="0" step="1" value="${r.price || ''}" placeholder="定价" data-price="${r.id}"></td>
@@ -631,6 +636,44 @@ document.addEventListener('change', async e => {
   try { await api('api/records/' + id, { method: 'PUT', body: JSON.stringify(body) }); const r = S.records.find(r => r.id === id); if (r) Object.assign(r, body); } catch (err) { toast(err.message); }
 });
 document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.matches('[data-note],[data-price]')) e.target.blur(); });
+// 拖进来就传：图片拖到三个勾上算凭证，拖到客户卡片上进这一行的文件包，文件库页拖进当前文件夹
+let dropEl = null;
+function markDrop(el) {
+  if (dropEl === el) return;
+  if (dropEl) dropEl.classList.remove('drop');
+  dropEl = el;
+  if (el) el.classList.add('drop');
+}
+function dropTarget(t) {
+  if (!t || !t.closest) return null;
+  return t.closest('[data-flag]') || t.closest('tr[data-row]')
+    || (S.topic === 'L' && S.lib && S.lib.path ? $('list') : null);
+}
+document.addEventListener('dragover', e => {
+  if (!S.me || !e.dataTransfer || ![...e.dataTransfer.types].includes('Files')) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'copy';
+  markDrop(dropTarget(e.target));
+});
+document.addEventListener('dragleave', e => { if (!e.relatedTarget) markDrop(null); });
+document.addEventListener('drop', async e => {
+  const files = [...((e.dataTransfer || {}).files || [])];
+  if (!files.length) return;
+  e.preventDefault();
+  const el = dropTarget(e.target);
+  markDrop(null);
+  if (!el || !S.me) return;
+  if (el.dataset && el.dataset.flag) {
+    const img = files.find(f => (f.type || '').startsWith('image/'));
+    if (!img) { toast('凭证要图片'); return; }
+    const fd = new FormData(); fd.append('file', img, img.name);
+    try { await api('api/records/' + el.dataset.id + '/proof/' + el.dataset.flag, { method: 'POST', body: fd }); await refresh(); toast('已存凭证'); }
+    catch (err) { toast(err.message); }
+    return;
+  }
+  if (el.dataset && el.dataset.row) return upload(el.dataset.row, files);
+  return libUpload(files);
+});
 $('proofIn').addEventListener('change', async () => {
   const f = $('proofIn').files[0]; if (!S.proofFor || !f) return;
   const fd = new FormData(); fd.append('file', f, f.name);
