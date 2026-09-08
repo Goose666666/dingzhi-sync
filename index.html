@@ -117,6 +117,7 @@ table.trash td.a{width:200px}
 .st{display:inline-flex;flex-direction:column;align-items:center;gap:4px}
 .st i{font-style:normal;font-size:11.5px;color:var(--mute);white-space:nowrap}
 .hist{margin-top:10px;font-size:12px;color:var(--mute);line-height:1.7}
+.hist .add{color:var(--ink);font-weight:600}
 .logs{display:flex;flex-direction:column;gap:2px}
 .lg{display:grid;grid-template-columns:120px 60px 1fr 220px;gap:12px;align-items:baseline;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 14px}
 .lg .t{color:var(--mute);font-size:13px}
@@ -581,12 +582,10 @@ function render() {
     return x ? { by: x.by, at: x.at } : { by: r.updatedBy || '', at: r.updated };
   };
   const hist = r => {
-    const xs = (S.log || []).filter(x => x.rid === r.id).slice(0, 6);
-    if (!xs.length) {
-      const a = (r.acts || {}).created;
-      return a ? `<div class="hist"><div>${esc(a.by)} 加了客户 · ${when(a.at)}</div></div>` : '';
-    }
-    return `<div class="hist">${xs.map(x => `<div>${esc(x.by)} ${esc(x.what)} · ${when(x.at)}</div>`).join('')}</div>`;
+    const c = (r.acts || {}).created || { by: r.owner || '', at: r.created };
+    const xs = (S.log || []).filter(x => x.rid === r.id && x.what !== '加了客户' && x.what !== '加了一行').slice(0, 5);
+    const add = c.by ? `<div class="add">${esc(c.by)} 加了客户 · ${when(c.at)}</div>` : '';
+    return `<div class="hist">${xs.map(x => `<div>${esc(x.by)} ${esc(x.what)} · ${when(x.at)}</div>`).join('')}${add}</div>`;
   };
   const tr = r => `<tr class="${r.done ? 'done' : ''}${r.gold ? ' gold' : ''}" data-row="${r.id}">
     <td class="n">${String(++n).padStart(2, '0')}</td>

@@ -830,6 +830,15 @@ def main():
         os.makedirs(os.path.join(LIB, *top.split("/")), exist_ok=True)
     if not os.path.exists(os.path.join(DATA, "records.json")):
         save("records.json", {"records": []})
+    d = load("records.json", {"records": []})          # 早先的行没记是谁加的，从 owner 和 created 补上
+    fix = 0
+    for r in d.get("records", []):
+        if not (r.get("acts") or {}).get("created"):
+            r.setdefault("acts", {})["created"] = {"by": r.get("owner", ""), "at": r.get("created", "")}
+            fix += 1
+    if fix:
+        save("records.json", d)
+        print("补了 %d 行的添加人" % fix)
     print("定制协作平台 http://%s:%d" % (a.host, a.port))
     ThreadingHTTPServer((a.host, a.port), Handler).serve_forever()
 
