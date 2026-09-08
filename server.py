@@ -29,7 +29,9 @@ DATA = os.path.join(HERE, "data")
 FILES = os.path.join(os.path.dirname(HERE), "定制文件")   # 服务器上就是 /data1/liutianrui/定制文件
 LIB = os.path.join(os.path.dirname(HERE), "文件库")        # 原稿、定制稿、代码
 LIB_TOP = ("原稿", "定制稿", "代码")
-LIB_FIXED = LIB_TOP + tuple(top + "/" + k + "题" for top in LIB_TOP for k in "ABC")   # 固定目录，不能删
+LIB_PAPERS = "优秀论文"
+LIB_ORDER = LIB_TOP + (LIB_PAPERS,)
+LIB_FIXED = LIB_ORDER + tuple(top + "/" + k + "题" for top in LIB_TOP for k in "ABC")   # 固定目录，不能删也不能改名
 INDEX = os.path.join(HERE, "index.html")
 PREFIX = "/dz"
 USERS = ("ltr", "qyh", "zjl")
@@ -214,6 +216,30 @@ class Handler(BaseHTTPRequestHandler):
             ctype = inline_type(base) if q.get("inline") else None
             return self.send_file(fp, ctype or mimetypes.guess_type(fp)[0] or "application/octet-stream",
                                   download=None if ctype else base)
+        if path == "/api/papers":
+            if not self.need_user():
+                return
+            out = []
+            root = os.path.join(LIB, LIB_PAPERS)
+            for name in sorted(os.listdir(root)) if os.path.isdir(root) else []:
+                full = os.path.join(root, name)
+                if name.startswith(".") or not os.path.isdir(full):
+                    continue
+                meta = {}
+                mp = os.path.join(full, "meta.json")
+                if os.path.exists(mp):
+                    try:
+                        meta = json.load(io.open(mp, encoding="utf-8"))
+                    except ValueError:
+                        meta = {}
+                pdf = meta.get("pdf") or next((f for f in sorted(os.listdir(full)) if f.lower().endswith(".pdf")), "")
+                size = os.path.getsize(os.path.join(full, pdf)) if pdf and os.path.exists(os.path.join(full, pdf)) else 0
+                figs = os.path.join(full, "图库")
+                out.append({"name": name, "title": meta.get("title") or name, "tag": meta.get("tag", ""),
+                            "desc": meta.get("desc", ""), "pdf": pdf, "pages": meta.get("pages", 0),
+                            "size": size, "cover": os.path.exists(os.path.join(full, "封面.png")),
+                            "figs": len(os.listdir(figs)) if os.path.isdir(figs) else 0})
+            return self.send_json({"papers": out})
         if path == "/api/skills":
             if not self.need_user():
                 return
@@ -278,7 +304,7 @@ class Handler(BaseHTTPRequestHandler):
                     st = os.stat(full)
                     files.append({"name": name, "size": st.st_size, "at": time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime(st.st_mtime))})
             if not rel:
-                dirs.sort(key=lambda x: LIB_TOP.index(x["name"]) if x["name"] in LIB_TOP else 99)
+                dirs.sort(key=lambda x: LIB_ORDER.index(x["name"]) if x["name"] in LIB_ORDER else 99)
             return self.send_json({"path": rel, "dirs": dirs, "files": files})
         if path == "/api/lib/zip":
             if not self.need_user():

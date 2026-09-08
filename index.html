@@ -104,6 +104,20 @@ table.trash td.k{width:70px;color:var(--mute)}
 table.trash td.w{width:120px;font-weight:600}
 table.trash td.t{width:170px;color:var(--mute)}
 table.trash td.a{width:200px}
+/* 优秀论文 */
+.pps{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px}
+.pp{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;display:flex;flex-direction:column}
+.pp .cv{display:block;height:190px;overflow:hidden;background:#eef2f8;border-bottom:1px solid var(--line)}
+.pp .cv img{width:100%;display:block}
+.pp .bd{padding:14px 16px 16px;display:flex;flex-direction:column;gap:8px;flex:1}
+.pp .hd{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.pp .hd b{font-size:15px}
+.pp .tg{font-size:12px;color:var(--acc);background:#eef4ff;border-radius:999px;padding:2px 9px}
+.pp .ds{color:var(--mute);line-height:1.6}
+.pp .mt{font-size:12.5px;color:var(--mute);margin-top:auto}
+.pp .ops{display:flex;gap:8px;padding-top:10px;border-top:1px solid var(--line)}
+.pp .ops a{padding:5px 12px;border:1px solid var(--line);border-radius:8px;color:var(--acc);cursor:pointer}
+.pp .ops a:hover{background:var(--chip)}
 /* 技能 */
 .sks{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
 .sk{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px;display:flex;flex-direction:column;gap:8px}
@@ -188,6 +202,7 @@ table.trash td.a{width:200px}
   <button class="tab" data-t="T"><span class="k">↺</span>回收站<span class="cnt" id="tcnt" hidden></span></button>
   <div class="sep"></div>
   <button class="tab" data-t="L"><span class="k">▤</span>文件库</button>
+  <button class="tab" data-t="P"><span class="k">◆</span>优秀论文</button>
   <button class="tab" data-t="K"><span class="k">✦</span>技能</button>
   <div class="me" id="me" hidden><span class="av" id="av"></span><span class="nm" id="who"></span><button id="btnOut">退出</button></div>
 </aside>
@@ -219,7 +234,7 @@ table.trash td.a{width:200px}
 const S = { me: '', topic: 'A', records: [], trash: [], uploadTo: null, closed: new Set(), zips: {}, proofFor: null };
 function readHash() {
   const h = decodeURIComponent(location.hash.slice(1));
-  const m = h.match(/^([ABCSTLK])(?:\/(.*))?$/);
+  const m = h.match(/^([ABCSTLKP])(?:\/(.*))?$/);
   if (m) { S.topic = m[1]; S.libPath = m[1] === 'L' ? (m[2] || '') : ''; }
   else { S.topic = localStorage.getItem('dz_topic') || 'A'; S.libPath = ''; }
 }
@@ -235,7 +250,7 @@ window.addEventListener('popstate', () => {
   readHash(); refresh();
 });
 const FLAGS = [['deposit', '定金', '已付定金'], ['paid', '结账', '已结账'], ['done', '完成', '已完成']];
-const TITLES = { A: 'A 题', B: 'B 题', C: 'C 题', S: '汇总', T: '回收站', L: '文件库', K: '技能' };
+const TITLES = { A: 'A 题', B: 'B 题', C: 'C 题', S: '汇总', T: '回收站', L: '文件库', K: '技能', P: '优秀论文' };
 S.libPath = ''; S.lib = null; S.libZip = null; readHash(); history.replaceState({ h: hashOf() }, '', hashOf());
 const money = n => (Math.round((n || 0) * 100) / 100).toLocaleString('zh-CN');
 const $ = id => document.getElementById(id);
@@ -336,6 +351,27 @@ async function loadLib() {
   try { S.lib = await api('api/lib?path=' + encodeURIComponent(S.libPath)); } catch (e) { S.libPath = ''; S.lib = await api('api/lib?path='); history.replaceState({ h: hashOf() }, '', hashOf()); }
   renderLib();
 }
+async function loadPapers() {
+  S.papers = await api('api/papers');
+  renderPapers();
+}
+function renderPapers() {
+  const d = S.papers; if (!d) { $('list').innerHTML = ''; return; }
+  $('sub').textContent = `${d.papers.length} 篇`;
+  const card = x => {
+    const base = '优秀论文/' + x.name;
+    return `<div class="pp">
+      ${x.cover ? `<a class="cv" href="lib/${enc(base + '/' + x.pdf)}?inline=1" target="_blank"><img src="lib/${enc(base + '/封面.png')}?inline=1" alt=""></a>` : ''}
+      <div class="bd"><div class="hd"><b>${esc(x.title)}</b>${x.tag ? `<span class="tg">${esc(x.tag)}</span>` : ''}</div>
+        <div class="ds">${esc(x.desc)}</div>
+        <div class="mt">${x.pages} 页 · ${mb(x.size)}${x.figs ? ` · 图库 ${x.figs} 张` : ''}</div>
+        <div class="ops"><a href="lib/${enc(base + '/' + x.pdf)}?inline=1" target="_blank">在线看</a>
+          <a href="lib/${enc(base + '/' + x.pdf)}">下载</a>
+          ${x.figs ? `<a data-go="${esc(base)}/图库">图库</a>` : ''}</div></div></div>`;
+  };
+  $('list').innerHTML = `<div class="pps">${d.papers.map(card).join('')}</div>`
+    + (d.papers.length ? '' : '<div class="empty">还没有论文</div>');
+}
 async function loadSkills() {
   S.skills = await api('api/skills');
   renderSkills();
@@ -412,6 +448,7 @@ function render() {
   $('add').hidden = !S.me || S.topic !== 'A' && S.topic !== 'B' && S.topic !== 'C';
   if (S.topic === 'L') return loadLib();
   if (S.topic === 'K') return loadSkills();
+  if (S.topic === 'P') return loadPapers();
   if (S.topic === 'S') return renderSummary();
   if (S.topic === 'T') return renderTrash();
   const rows = S.records.filter(r => r.topic === S.topic);
