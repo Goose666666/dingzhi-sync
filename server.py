@@ -430,6 +430,7 @@ class Handler(BaseHTTPRequestHandler):
             rec = {"id": secrets.token_hex(4), "topic": topic, "customer": customer, "need": need,
                    "owner": str(b.get("owner", u)).strip()[:20] or u, "done": False, "deposit": False,
                    "paid": False, "gold": False, "price": 0, "proof": {}, "files": [],
+                   "acts": {"created": {"by": u, "at": now()}},
                    "created": now(), "updated": now(), "updatedBy": u}
 
             def f(d):
@@ -437,7 +438,7 @@ class Handler(BaseHTTPRequestHandler):
                 used += [t["rec"].get("seq", 0) for t in d.get("trash", []) if t["kind"] == "row" and t["rec"]["topic"] == topic]
                 rec["seq"] = 1 + max(used or [0])
                 d["records"].append(rec)
-                log(d, u, "加了一行", rid=rec["id"], where=where_of(rec))
+                log(d, u, "加了客户", rid=rec["id"], where=where_of(rec))
             self.mutate(f)
             return self.send_json(rec)
         m = path.split("/")
@@ -576,6 +577,10 @@ class Handler(BaseHTTPRequestHandler):
                             return
                         if bool(b[k]) != bool(r.get(k)):
                             acts.append(("勾了" if b[k] else "取消了") + FLAG_CN[k])
+                            if b[k]:
+                                r.setdefault("acts", {})[k] = {"by": u, "at": now()}
+                            else:
+                                r.get("acts", {}).pop(k, None)
                         r[k] = bool(b[k])
                 r["updated"], r["updatedBy"] = now(), u
                 for x in acts:
@@ -597,7 +602,7 @@ class Handler(BaseHTTPRequestHandler):
                 for x in d["records"]:
                     if x["id"] == m[3]:
                         d["trash"].insert(0, {"id": secrets.token_hex(4), "kind": "row", "at": now(), "by": u, "rec": x})
-                        log(d, u, "删了这一行", rid=x["id"], where=where_of(x))
+                        log(d, u, "删了这个客户", rid=x["id"], where=where_of(x))
                 d["records"] = [x for x in d["records"] if x["id"] != m[3]]
             self.mutate(f)
             return self.send_json({})
@@ -623,6 +628,7 @@ class Handler(BaseHTTPRequestHandler):
                             item["proof"] = k
                             del r["proof"][k]
                             r[k] = False
+                            r.get("acts", {}).pop(k, None)
                     d["trash"].insert(0, item)
                 names = {x["name"] for x in hit}
                 r["files"] = [x for x in r.get("files", []) if x["name"] not in names]
@@ -804,6 +810,7 @@ class Handler(BaseHTTPRequestHandler):
                 if proof:
                     r.setdefault("proof", {})[proof] = name
                     r[proof] = True
+                    r.setdefault("acts", {})[proof] = {"by": u, "at": now()}
             r["updated"], r["updatedBy"] = now(), u
             if names:
                 log(d, u, ("传了凭证，勾了" + FLAG_CN[proof]) if proof else "传了 %d 个文件" % len(names),

@@ -113,7 +113,10 @@ table.trash td.w{width:120px;font-weight:600}
 table.trash td.t{width:170px;color:var(--mute)}
 table.trash td.a{width:200px}
 /* 操作记录 */
-.who{font-size:12px;color:var(--mute);margin-top:10px}
+.steps{align-items:flex-start}
+.st{display:inline-flex;flex-direction:column;align-items:center;gap:4px}
+.st i{font-style:normal;font-size:11.5px;color:var(--mute);white-space:nowrap}
+.hist{margin-top:10px;font-size:12px;color:var(--mute);line-height:1.7}
 .logs{display:flex;flex-direction:column;gap:2px}
 .lg{display:grid;grid-template-columns:120px 60px 1fr 220px;gap:12px;align-items:baseline;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 14px}
 .lg .t{color:var(--mute);font-size:13px}
@@ -239,7 +242,7 @@ tr.drop{box-shadow:inset 0 0 0 2px var(--acc)}
   table.rows tr td:first-child,table.rows tr td:last-child{border:0;border-radius:0}
   table.rows td.n{position:absolute;top:14px;right:14px;padding:0}
   table.rows td.note{padding-right:30px}
-  table.rows td.a{text-align:left;white-space:normal;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  table.rows td.a{text-align:left;white-space:normal;display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start}
   table.rows td.a .pfs{flex-basis:100%;margin-top:4px}
   table.rows tr.done{background:#fbfcfe}
   table.rows tr.gold{box-shadow:inset 3px 0 0 var(--red)}
@@ -571,17 +574,27 @@ function render() {
   $('sub').textContent = rows.length ? `${todo.length} 个在做 · ${done.length} 个已完成` : '';
   if (!rows.length) { $('list').innerHTML = '<div class="empty">还没有客户</div>'; return; }
   let n = 0;
-  const lastOp = rid => {
-    const x = (S.log || []).find(y => y.rid === rid);
-    return x ? `<div class="who">${esc(x.by)} ${esc(x.what)} · ${when(x.at)}</div>` : '';
+  const actOf = (r, k) => {
+    const a = (r.acts || {})[k];
+    if (a) return a;
+    const x = (S.log || []).find(y => y.rid === r.id && y.what.indexOf(FLAGS.find(f => f[0] === k)[1]) >= 0);
+    return x ? { by: x.by, at: x.at } : { by: r.updatedBy || '', at: r.updated };
+  };
+  const hist = r => {
+    const xs = (S.log || []).filter(x => x.rid === r.id).slice(0, 6);
+    if (!xs.length) {
+      const a = (r.acts || {}).created;
+      return a ? `<div class="hist"><div>${esc(a.by)} 加了客户 · ${when(a.at)}</div></div>` : '';
+    }
+    return `<div class="hist">${xs.map(x => `<div>${esc(x.by)} ${esc(x.what)} · ${when(x.at)}</div>`).join('')}</div>`;
   };
   const tr = r => `<tr class="${r.done ? 'done' : ''}${r.gold ? ' gold' : ''}" data-row="${r.id}">
     <td class="n">${String(++n).padStart(2, '0')}</td>
-    <td class="note"><div class="nw"><button class="gd ${r.gold ? 'on' : ''}" data-gold="${r.id}" title="冲国奖">${r.gold ? '冲国奖' : '☆'}</button><input value="${esc(r.note || '')}" placeholder="备注" data-note="${r.id}"></div></td>
+    <td class="note"><div class="nw"><button class="gd ${r.gold ? 'on' : ''}" data-gold="${r.id}" title="冲国奖">${r.gold ? '冲国奖' : '☆'}</button><input value="${esc(r.note || '')}" placeholder="备注" data-note="${r.id}"></div>${hist(r)}</td>
     <td class="price"><input type="number" min="0" step="1" value="${r.price || ''}" placeholder="定价" data-price="${r.id}"></td>
     <td><div class="tree">${dirRows(r.id, tree(r.files || []), '')}</div><button class="sm" data-up="${r.id}">上传</button> <button class="sm" data-pick="${r.id}">从文件库选</button></td>
-    <td class="a"><span class="steps">${FLAGS.map(([k, off, on]) => `<button class="${r[k] ? 'on' : ''}" data-flag="${k}" data-id="${r.id}">${r[k] ? on : off}</button>`).join('')}</span><button class="sm ghost warn del" data-del="${r.id}">删除</button>
-      ${lastOp(r.id)}<div class="pfs">${FLAGS.filter(([k]) => r.proof && r.proof[k]).map(([k, off, on]) => `<a class="pf" target="_blank" href="files/${encodeURIComponent(r.id)}/${enc(r.proof[k])}?inline=1"><img src="files/${encodeURIComponent(r.id)}/${enc(r.proof[k])}?inline=1" alt="${on}" onerror="this.outerHTML='<span class=broken>打开图片</span>'"><span>${on}</span></a>`).join('')}</div></td>
+    <td class="a"><span class="steps">${FLAGS.map(([k, off, on]) => `<span class="st"><button class="${r[k] ? 'on' : ''}" data-flag="${k}" data-id="${r.id}">${r[k] ? on : off}</button>${r[k] ? `<i>${esc(actOf(r, k).by)} ${when(actOf(r, k).at)}</i>` : ''}</span>`).join('')}</span><button class="sm ghost warn del" data-del="${r.id}">删除</button>
+      <div class="pfs">${FLAGS.filter(([k]) => r.proof && r.proof[k]).map(([k, off, on]) => `<a class="pf" target="_blank" href="files/${encodeURIComponent(r.id)}/${enc(r.proof[k])}?inline=1"><img src="files/${encodeURIComponent(r.id)}/${enc(r.proof[k])}?inline=1" alt="${on}" onerror="this.outerHTML='<span class=broken>打开图片</span>'"><span>${on}</span></a>`).join('')}</div></td>
   </tr>`;
   $('list').innerHTML = `<table class="rows"><tr class="hd"><th></th><th>备注</th><th>定价</th><th>文件</th><th class="a">状态</th></tr>${todo.map(tr).join('')}${done.length ? `<tr class="sep"><td colspan="5">已完成</td></tr>` + done.map(tr).join('') : ''}</table>`;
 }
