@@ -350,6 +350,29 @@ class Handler(BaseHTTPRequestHandler):
                 return self.fail("目录不对")
             os.makedirs(os.path.join(fp, name), exist_ok=True)
             return self.send_json({})
+        if path == "/api/lib/rename":
+            b = self.body_json()
+            fp, rel = lib_path(str(b.get("path", "")))
+            name = safe_name(str(b.get("name", "")))
+            if fp is None or not rel or rel in LIB_FIXED or not os.path.exists(fp):
+                return self.fail("这个不能改名")
+            if not name or name.startswith(".") or name == "未命名":
+                return self.fail("名字不能空")
+            dst = os.path.join(os.path.dirname(fp), name)
+            if os.path.abspath(dst) == os.path.abspath(fp):
+                return self.send_json({})
+            if os.path.exists(dst):
+                return self.fail("这个名字已经有了")
+            os.replace(fp, dst)
+            new = "/".join(rel.split("/")[:-1] + [name])
+
+            def h(d):
+                rv = d.get("review") or {}
+                for k in [x for x in rv if x == rel or x.startswith(rel + "/")]:
+                    rv[new + k[len(rel):]] = rv.pop(k)
+                d["review"] = rv
+            self.mutate(h)
+            return self.send_json({"path": new})
         if path == "/api/lib/review":
             b = self.body_json()
             fp, rel = lib_path(str(b.get("path", "")))
