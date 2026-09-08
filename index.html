@@ -58,13 +58,22 @@ tr td:first-child{border-left:1px solid var(--line);border-radius:12px 0 0 12px}
 tr td:last-child{border-right:1px solid var(--line);border-radius:0 12px 12px 0}
 tr:hover td{box-shadow:0 6px 18px -12px rgba(15,23,42,.25)}
 td.n{width:56px;font-weight:700;color:var(--mute);font-size:15px}
-td.note{width:220px}
+td.note{width:330px}
 td.note input{width:100%}
 td.price{width:120px}
 td.price input{width:100%}
 td.a,th.a{width:380px;text-align:right;white-space:nowrap}
 .steps{display:inline-flex;gap:6px}
 .steps button{height:30px;padding:0 12px;font-size:13px;border-radius:999px}
+td.note .nw{display:flex;align-items:center;gap:8px}
+td.note .nw input{flex:1;min-width:0}
+.gd{flex:none}
+.gd{height:28px;padding:0 11px;font-size:12.5px;border-radius:999px;border:1px solid #f0cccc;color:var(--red);background:#fff;white-space:nowrap}
+.gd:hover{background:#fff5f5}
+.gd.on{background:var(--red);border-color:var(--red);color:#fff;font-weight:600}
+tr.gold td:first-child{box-shadow:inset 3px 0 0 var(--red)}
+.tile.gd{border-color:#f0b8b8}
+.gdtag{margin-left:6px;font-size:11.5px;color:#fff;background:var(--red);border-radius:999px;padding:1px 7px;font-weight:600;white-space:nowrap}
 .steps button.on::before{content:"✓ ";font-weight:700}
 td.a .del{margin-left:6px}
 td.a .pfs{display:flex;gap:10px;justify-content:flex-end;margin-top:12px}
@@ -149,7 +158,7 @@ table.trash td.a{width:200px}
 .tile.f.tex .ic,.tile.f.py .ic{color:var(--acc);border-color:#c7d8fb;background:#f2f6ff}
 .tile .nm{font-weight:600;word-break:break-all;line-height:1.35}
 .tile .mt{font-size:12px;color:var(--mute);margin-top:auto}
-.tile .ops{position:absolute;top:8px;right:8px;display:none;gap:4px}
+.tile .ops{position:absolute;top:8px;right:8px;left:8px;display:none;gap:4px;flex-wrap:wrap;justify-content:flex-end}
 .tile:hover .ops{display:flex}
 .tile .ops span{font-size:12px;padding:2px 7px;border-radius:6px;background:#fff;border:1px solid var(--line);color:var(--acc)}
 .tile .ops span.x{color:var(--red)}
@@ -403,7 +412,8 @@ function renderLib() {
     const p = d.path ? d.path + '/' + x.name : x.name;
     const rvLine = RV ? `<div class="rv">${x.review ? '已审核 ' + when(x.review.at) + ' · ' + esc(x.review.by) : '未审核'}</div>` : '';
     const rvOp = RV ? `<span class="${x.review ? '' : 'ok'}" data-rv="${esc(p)}" data-on="${x.review ? 0 : 1}">${x.review ? '撤销审核' : '确认审核'}</span>` : '';
-    return `<div class="tile dir ${RV ? (x.review ? 'rv1' : 'rv0') : ''}" data-go="${esc(p)}"><div class="ic"></div><div class="nm">${esc(x.name)}</div>${rvLine}<div class="mt">${x.count} 项</div>${parts.length && !FIXED.includes(p) ? `<div class="ops">${rvOp}<span data-lmv="${esc(p)}">改名</span><span class="x" data-ldel="${esc(p)}">删除</span></div>` : ''}</div>`;
+    const gdOp = RV ? `<span class="${x.gold ? 'x' : ''}" data-gd="${esc(p)}" data-on="${x.gold ? 0 : 1}">${x.gold ? '取消冲国奖' : '冲国奖'}</span>` : '';
+    return `<div class="tile dir ${RV ? (x.review ? 'rv1' : 'rv0') : ''}${x.gold ? ' gd' : ''}" data-go="${esc(p)}"><div class="ic"></div><div class="nm">${esc(x.name)}${x.gold ? '<span class="gdtag">冲国奖</span>' : ''}</div>${rvLine}<div class="mt">${x.count} 项</div>${parts.length && !FIXED.includes(p) ? `<div class="ops">${gdOp}${rvOp}<span data-lmv="${esc(p)}">改名</span><span class="x" data-ldel="${esc(p)}">删除</span></div>` : ''}</div>`;
   };
   const fileTile = x => {
     const p = d.path + '/' + x.name, ext = (x.name.split('.').pop() || '').toLowerCase(), url = 'lib/' + enc(p);
@@ -457,9 +467,9 @@ function render() {
   $('sub').textContent = rows.length ? `${todo.length} 个在做 · ${done.length} 个已完成` : '';
   if (!rows.length) { $('list').innerHTML = '<div class="empty">还没有客户</div>'; return; }
   let n = 0;
-  const tr = r => `<tr class="${r.done ? 'done' : ''}">
+  const tr = r => `<tr class="${r.done ? 'done' : ''}${r.gold ? ' gold' : ''}">
     <td class="n">${String(++n).padStart(2, '0')}</td>
-    <td class="note"><input value="${esc(r.note || '')}" placeholder="备注" data-note="${r.id}"></td>
+    <td class="note"><div class="nw"><button class="gd ${r.gold ? 'on' : ''}" data-gold="${r.id}">冲国奖</button><input value="${esc(r.note || '')}" placeholder="备注" data-note="${r.id}"></div></td>
     <td class="price"><input type="number" min="0" step="1" value="${r.price || ''}" placeholder="定价" data-price="${r.id}"></td>
     <td><div class="tree">${dirRows(r.id, tree(r.files || []), '')}</div><button class="sm" data-up="${r.id}">上传</button> <button class="sm" data-pick="${r.id}">从文件库选</button></td>
     <td class="a"><span class="steps">${FLAGS.map(([k, off, on]) => `<button class="${r[k] ? 'on' : ''}" data-flag="${k}" data-id="${r.id}">${r[k] ? on : off}</button>`).join('')}</span><button class="sm ghost warn del" data-del="${r.id}">删除</button>
@@ -476,13 +486,20 @@ async function upload(rid, list) {
 }
 document.addEventListener('click', async e => {
   const t = e.target.closest('.tab'); if (t) { go(t.dataset.t); return; }
+  const gd = e.target.closest('[data-gold]');
+  if (gd) {
+    const r = S.records.find(x => x.id === gd.dataset.gold);
+    try { await api('api/records/' + gd.dataset.gold, { method: 'PUT', body: JSON.stringify({ gold: !(r && r.gold) }) }); await refresh(); } catch (err) { toast(err.message); }
+    return;
+  }
   if (e.target.closest('#libUp')) { $('libIn').value = ''; $('libIn').click(); return; }
   if (e.target.closest('#libUpDir')) { $('libDirIn').value = ''; $('libDirIn').click(); return; }
   if (e.target.closest('#libMk')) { const name = prompt('文件夹名字'); if (name && name.trim()) { try { await api('api/lib/mkdir', { method: 'POST', body: JSON.stringify({ path: S.libPath, name: name.trim() }) }); await loadLib(); } catch (err) { toast(err.message); } } return; }
-  const lb = e.target.closest('[data-rv],[data-lmv],[data-ldel],[data-lzip],[data-go],[data-open]');
+  const lb = e.target.closest('[data-gd],[data-rv],[data-lmv],[data-ldel],[data-lzip],[data-go],[data-open]');
   if (lb) {
     try {
-      if (lb.dataset.lmv !== undefined) {
+      if (lb.dataset.gd !== undefined) { e.stopPropagation(); const on = lb.dataset.on === '1'; await api('api/lib/gold', { method: 'POST', body: JSON.stringify({ path: lb.dataset.gd, on }) }); await loadLib(); toast(on ? '已标冲国奖' : '已取消'); }
+      else if (lb.dataset.lmv !== undefined) {
         e.stopPropagation();
         const old = lb.dataset.lmv.split('/').pop(), name = prompt('新名字', old);
         if (name && name.trim() && name.trim() !== old) { await api('api/lib/rename', { method: 'POST', body: JSON.stringify({ path: lb.dataset.lmv, name: name.trim() }) }); await loadLib(); toast('已改名'); }

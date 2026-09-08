@@ -292,14 +292,16 @@ class Handler(BaseHTTPRequestHandler):
             if fp is None or not os.path.isdir(fp):
                 return self.fail("没有这个目录", 404)
             dirs, files = [], []
-            review = load("records.json", {}).get("review", {})
+            _d = load("records.json", {})
+            review, gold = _d.get("review", {}), _d.get("gold", {})
             for name in sorted(os.listdir(fp)):
                 if name.startswith("."):
                     continue
                 full = os.path.join(fp, name)
                 if os.path.isdir(full):
                     cnt = sum(1 for x in os.listdir(full) if not x.startswith("."))
-                    dirs.append({"name": name, "count": cnt, "review": review.get(rel + "/" + name if rel else name)})
+                    key = rel + "/" + name if rel else name
+                    dirs.append({"name": name, "count": cnt, "review": review.get(key), "gold": gold.get(key)})
                 else:
                     st = os.stat(full)
                     files.append({"name": name, "size": st.st_size, "at": time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime(st.st_mtime))})
@@ -411,7 +413,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self.fail("题号不对")
             rec = {"id": secrets.token_hex(4), "topic": topic, "customer": customer, "need": need,
                    "owner": str(b.get("owner", u)).strip()[:20] or u, "done": False, "deposit": False,
-                   "paid": False, "price": 0, "proof": {}, "files": [], "created": now(), "updated": now(), "updatedBy": u}
+                   "paid": False, "gold": False, "price": 0, "proof": {}, "files": [],
+                   "created": now(), "updated": now(), "updatedBy": u}
 
             def f(d):
                 used = [x.get("seq", 0) for x in d["records"] if x["topic"] == topic]
@@ -455,20 +458,22 @@ class Handler(BaseHTTPRequestHandler):
             new = "/".join(rel.split("/")[:-1] + [name])
 
             def h(d):
-                rv = d.get("review") or {}
-                for k in [x for x in rv if x == rel or x.startswith(rel + "/")]:
-                    rv[new + k[len(rel):]] = rv.pop(k)
-                d["review"] = rv
+                for key in ("review", "gold"):
+                    rv = d.get(key) or {}
+                    for k in [x for x in rv if x == rel or x.startswith(rel + "/")]:
+                        rv[new + k[len(rel):]] = rv.pop(k)
+                    d[key] = rv
             self.mutate(h)
             return self.send_json({"path": new})
-        if path == "/api/lib/review":
+        if path in ("/api/lib/review", "/api/lib/gold"):
+            key = "review" if path.endswith("review") else "gold"
             b = self.body_json()
             fp, rel = lib_path(str(b.get("path", "")))
             if fp is None or not rel or not os.path.isdir(fp):
                 return self.fail("目录不对")
 
             def h(d):
-                rv = d.setdefault("review", {})
+                rv = d.setdefault(key, {})
                 if b.get("on"):
                     rv[rel] = {"by": u, "at": now()}
                 else:
@@ -529,6 +534,8 @@ class Handler(BaseHTTPRequestHandler):
                         r["price"] = max(0.0, float(b["price"] or 0))
                     except (TypeError, ValueError):
                         pass
+                if "gold" in b:
+                    r["gold"] = bool(b["gold"])
                 for k in ("done", "deposit", "paid"):
                     if k in b:
                         if b[k] and not r.get("proof", {}).get(k):
@@ -600,8 +607,9 @@ class Handler(BaseHTTPRequestHandler):
 
             def h(d):
                 rv = d.get("review", {}).pop(rel, None)
+                gd = d.get("gold", {}).pop(rel, None)
                 d["trash"].insert(0, {"id": tid, "kind": "lib", "at": now(), "by": u, "path": rel,
-                                      "isdir": isdir, "size": size, "review": rv})
+                                      "isdir": isdir, "size": size, "review": rv, "gold": gd})
             self.mutate(h)
             return self.send_json({})
         if len(m) == 4 and m[1:3] == ["api", "trash"]:
@@ -644,8 +652,9 @@ class Handler(BaseHTTPRequestHandler):
                 if os.path.exists(src):
                     os.replace(src, dst)
                 shutil.rmtree(os.path.join(LIB, ".回收站", t["id"]), ignore_errors=True)
-                if t.get("review"):
-                    d.setdefault("review", {})[os.path.relpath(dst, LIB).replace(os.sep, "/")] = t["review"]
+                for key in ("review", "gold"):
+                    if t.get(key):
+                        d.setdefault(key, {})[os.path.relpath(dst, LIB).replace(os.sep, "/")] = t[key]
             else:
                 r = next((x for x in d["records"] if x["id"] == t["rid"]), None)
                 if not r:
