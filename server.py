@@ -11,6 +11,7 @@
 import argparse
 import email.parser
 import email.policy
+import io
 import json
 import mimetypes
 import os
@@ -73,6 +74,22 @@ def safe_rel(path):
     """带子目录的相对路径，去掉 .. 和空段，统一用 / 连。"""
     parts = [safe_name(p) for p in path.replace("\\", "/").split("/") if p.strip() and p.strip() not in (".", "..")]
     return "/".join(parts) or "未命名"
+
+
+def skill_desc(md):
+    """SKILL.md 头上 description: 后面那段，取到第一个句号。"""
+    if not os.path.exists(md):
+        return ""
+    txt = io.open(md, encoding="utf-8", errors="replace").read(4000)
+    i = txt.find("description:")
+    if i < 0:
+        return ""
+    seg = txt[i + 12:]
+    end = seg.find("\n---")
+    seg = (seg[:end] if end > 0 else seg).strip().strip('"')
+    seg = " ".join(x.strip() for x in seg.split("\n") if not x.strip().endswith(":"))
+    j = seg.find("。")
+    return (seg[:j + 1] if j > 0 else seg)[:120]
 
 
 def lib_path(rel):
@@ -197,6 +214,51 @@ class Handler(BaseHTTPRequestHandler):
             ctype = inline_type(base) if q.get("inline") else None
             return self.send_file(fp, ctype or mimetypes.guess_type(fp)[0] or "application/octet-stream",
                                   download=None if ctype else base)
+        if path == "/api/skills":
+            if not self.need_user():
+                return
+            out = []
+            root = os.path.join(LIB, "代码", "skills")
+            for name in sorted(os.listdir(root)) if os.path.isdir(root) else []:
+                full = os.path.join(root, name)
+                if name.startswith(".") or not os.path.isdir(full):
+                    continue
+                n, size, at = 0, 0, 0
+                for r, ds, fs in os.walk(full):
+                    ds[:] = [x for x in ds if not x.startswith(".")]
+                    for f in fs:
+                        st = os.stat(os.path.join(r, f))
+                        n += 1
+                        size += st.st_size
+                        at = max(at, st.st_mtime)
+                out.append({"name": name, "desc": skill_desc(os.path.join(full, "SKILL.md")),
+                            "count": n, "size": size,
+                            "at": time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime(at)) if at else ""})
+            docs = [x for x in (sorted(os.listdir(root)) if os.path.isdir(root) else []) if x.endswith(".md")]
+            return self.send_json({"skills": out, "docs": docs})
+        if path == "/api/skills/zip":
+            if not self.need_user():
+                return
+            name = safe_name(urllib.parse.unquote(q.get("name", [""])[0]))
+            full = os.path.join(LIB, "代码", "skills", name)
+            if not name or name.startswith(".") or not os.path.isdir(full):
+                return self.fail("没有这个 skill", 404)
+            buf = io.BytesIO()
+            with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+                for r, ds, fs in os.walk(full):
+                    ds[:] = [x for x in ds if not x.startswith(".")]
+                    for f in fs:
+                        p = os.path.join(r, f)
+                        z.write(p, name + "/" + os.path.relpath(p, full).replace(os.sep, "/"))
+            data = buf.getvalue()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/zip")
+            self.send_header("Content-Length", str(len(data)))
+            self.send_header("Content-Disposition",
+                             "attachment; filename*=UTF-8''" + urllib.parse.quote(name + ".zip"))
+            self.end_headers()
+            self.wfile.write(data)
+            return
         if path == "/api/lib":
             if not self.need_user():
                 return
