@@ -200,6 +200,76 @@ table.trash td.a{width:200px}
 .dlg input{width:100%;height:42px}
 .dlg button{height:42px}
 #toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 18px;border-radius:10px;display:none;z-index:10;box-shadow:0 10px 30px -10px rgba(0,0,0,.5)}
+.scroll{overflow-x:auto}
+@media(max-width:760px){
+  /* 顶栏：一行放不下就换行，跟着页面走不粘住 */
+  .bar{position:static;height:auto;min-height:38px;flex-wrap:wrap;gap:2px 16px;padding:7px 12px;font-size:12.5px;line-height:1.4}
+  .bar .left b{font-size:15px}
+  /* 侧栏变成顶上一条横向标签，滑得动 */
+  .app{grid-template-columns:1fr;min-height:auto}
+  aside{position:sticky;top:0;height:auto;flex-direction:row;flex-wrap:nowrap;overflow-x:auto;align-items:center;gap:6px;padding:9px 12px;z-index:5;-webkit-overflow-scrolling:touch}
+  aside::-webkit-scrollbar{display:none}
+  .brand{display:none}
+  .sep{display:none}
+  .tab{width:auto;flex:none;height:34px;padding:0 12px;margin:0;font-size:13.5px;border-radius:999px;background:rgba(255,255,255,.06)}
+  .tab .k{display:none}
+  .tab .cnt.red{top:-3px;right:-3px;min-width:17px;height:17px;font-size:11px}
+  .me{margin:0 0 0 auto;flex:none;padding:5px 8px;gap:7px}
+  .me .av{width:26px;height:26px;font-size:12px}
+  main{padding:16px 13px 44px}
+  .top{flex-wrap:wrap;gap:10px}
+  .top h2{font-size:19px}
+  /* 客户行改成一张张卡片 */
+  table.rows{border-spacing:0}
+  table.rows .hd{display:none}
+  table.rows tr{display:block;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:12px;position:relative}
+  table.rows td{display:block;width:auto;background:transparent;border:0;padding:5px 0}
+  table.rows tr td:first-child,table.rows tr td:last-child{border:0;border-radius:0}
+  table.rows td.n{position:absolute;top:14px;right:14px;padding:0}
+  table.rows td.note{padding-right:30px}
+  table.rows td.a{text-align:left;white-space:normal;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  table.rows td.a .pfs{flex-basis:100%;margin-top:4px}
+  table.rows tr.done{background:#fbfcfe}
+  table.rows tr.gold{box-shadow:inset 3px 0 0 var(--red)}
+  table.rows tr.gold td:first-child{box-shadow:none}
+  table.rows tr.sep{background:transparent;border:0;padding:2px 0 0;margin:0}
+  table.rows tr.sep td{padding:0}
+  table.rows tr:hover td{box-shadow:none}
+  .steps{display:flex;flex-wrap:wrap;gap:8px}
+  td.a .del{margin-left:0;margin-top:8px}
+  td.a .pfs{justify-content:flex-start}
+  .file .nm{max-width:none;overflow:hidden;text-overflow:ellipsis}
+  button{white-space:nowrap}
+  /* 汇总和回收站：一行一张卡，不用横着拖 */
+  table.sum,table.trash{width:100%;border-spacing:0}
+  table.sum .hd,table.trash .hd{display:none}
+  table.sum tr,table.trash tr{display:block;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:12px}
+  table.sum td,table.trash td{display:block;background:transparent;border:0;padding:4px 0}
+  table.sum tr td:first-child,table.sum tr td:last-child,table.trash tr td:first-child,table.trash tr td:last-child{border:0;border-radius:0}
+  table.sum td.w{font-weight:700;font-size:15px;padding-bottom:8px}
+  table.sum td[data-l]{display:flex;justify-content:space-between;gap:12px}
+  table.sum td[data-l]::before{content:attr(data-l);color:var(--mute);font-weight:400}
+  table.sum tr.total{background:#f8fafc}
+  table.sum tr.total td{font-weight:700}
+  table.trash td.k{width:auto;font-size:12px;color:var(--mute)}
+  table.trash td.w{width:auto;font-weight:700}
+  table.trash td.t{width:auto}
+  table.trash td.a{width:auto;display:flex;gap:8px;margin-top:8px}
+  .kpis{grid-template-columns:repeat(2,1fr);gap:10px}
+  .kpi{padding:13px 14px}
+  .kpi .v{font-size:22px}
+  /* 文件库：触屏没有悬停，操作按钮直接显示 */
+  .grid{grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px}
+  .tile{min-height:0}
+  .tile .ops{position:static;display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+  .tile .ops span,.tile .ops a span{font-size:12px;padding:3px 9px}
+  .crumb{flex-wrap:wrap;row-gap:8px}
+  .libbar{flex-wrap:wrap}
+  .sks,.pps{grid-template-columns:1fr}
+  .pp .cv{height:150px}
+  .dlg.wide{width:96vw;padding:20px 16px 18px}
+  .pklist{max-height:56vh}
+}
 @media(max-width:900px){.app{grid-template-columns:1fr}aside{position:static;height:auto;flex-direction:row;flex-wrap:wrap;padding:12px}.brand{padding:4px 10px}.tab{width:auto}.me{margin:0 0 0 auto}main{padding:18px}.kpis{grid-template-columns:repeat(2,1fr)}}
 </style>
 </head>
@@ -330,15 +400,15 @@ function dirRows(rid, node, prefix) {
 function renderSummary() {
   const all = S.records, sum = (rs, f) => rs.filter(f || (() => true)).reduce((a, r) => a + (r.price || 0), 0);
   $('sub').textContent = `${all.length} 个客户 · ${all.filter(r => r.done).length} 个已完成`;
-  const line = (name, rs) => `<tr class="${name === '合计' ? 'total' : ''}"><td>${name}</td><td>${rs.length}</td><td>${rs.filter(r => r.done).length}</td><td>${money(sum(rs))}</td><td>${money(sum(rs, r => r.paid))}</td><td>${money(sum(rs, r => !r.paid))}</td><td>${rs.filter(r => r.deposit && !r.paid).length}</td></tr>`;
+  const line = (name, rs) => `<tr class="${name === '合计' ? 'total' : ''}"><td class="w">${name}</td><td data-l="客户">${rs.length}</td><td data-l="已完成">${rs.filter(r => r.done).length}</td><td data-l="定价合计">${money(sum(rs))}</td><td data-l="已结账">${money(sum(rs, r => r.paid))}</td><td data-l="未结账">${money(sum(rs, r => !r.paid))}</td><td data-l="只付了定金">${rs.filter(r => r.deposit && !r.paid).length}</td></tr>`;
   $('list').innerHTML = `<div class="kpis">
       <div class="kpi"><div class="l">定价合计</div><div class="v">${money(sum(all))}<small>元</small></div></div>
       <div class="kpi"><div class="l">已结账</div><div class="v">${money(sum(all, r => r.paid))}<small>元</small></div></div>
       <div class="kpi"><div class="l">未结账</div><div class="v">${money(sum(all, r => !r.paid))}<small>元</small></div></div>
       <div class="kpi"><div class="l">只付了定金</div><div class="v">${all.filter(r => r.deposit && !r.paid).length}<small>个</small></div></div>
     </div>
-    <table class="sum"><tr><th></th><th>客户</th><th>已完成</th><th>定价合计</th><th>已结账</th><th>未结账</th><th>只付了定金</th></tr>
-    ${['A', 'B', 'C'].map(k => line(k + ' 题', all.filter(r => r.topic === k))).join('')}${line('合计', all)}</table>`;
+    <div class="scroll"><table class="sum"><tr class="hd"><th></th><th>客户</th><th>已完成</th><th>定价合计</th><th>已结账</th><th>未结账</th><th>只付了定金</th></tr>
+    ${['A', 'B', 'C'].map(k => line(k + ' 题', all.filter(r => r.topic === k))).join('')}${line('合计', all)}</table></div>`;
 }
 function renderTrash() {
   $('sub').textContent = S.trash.length ? `${S.trash.length} 项` : '';
@@ -349,7 +419,7 @@ function renderTrash() {
     : t.kind === 'row'
     ? `<tr><td class="k">客户</td><td class="w">${t.rec.topic} 题 ${t.rec.seq} 号</td><td>${esc(t.rec.note || '')}${t.rec.price ? ' · ' + money(t.rec.price) : ''}${(t.rec.files || []).length ? ' · ' + t.rec.files.length + ' 个文件' : ''}</td><td class="t">${esc(t.by)} ${when(t.at)}</td>${acts(t)}</tr>`
     : `<tr><td class="k">文件</td><td class="w">${t.topic} 题 ${t.seq} 号</td><td>${esc(t.file.name)} <span class="sz">${mb(t.file.size)}</span></td><td class="t">${esc(t.by)} ${when(t.at)}</td>${acts(t)}</tr>`;
-  $('list').innerHTML = `<table class="trash"><tr><th></th><th>位置</th><th>内容</th><th>删除</th><th class="a"></th></tr>${S.trash.map(row).join('')}</table>`;
+  $('list').innerHTML = `<div class="scroll"><table class="trash"><tr class="hd"><th></th><th>位置</th><th>内容</th><th>删除</th><th class="a"></th></tr>${S.trash.map(row).join('')}</table></div>`;
 }
 const DEADLINE = new Date('2026-09-13T20:00:00+08:00');
 function tick() {
@@ -482,7 +552,7 @@ function render() {
     <td class="a"><span class="steps">${FLAGS.map(([k, off, on]) => `<button class="${r[k] ? 'on' : ''}" data-flag="${k}" data-id="${r.id}">${r[k] ? on : off}</button>`).join('')}</span><button class="sm ghost warn del" data-del="${r.id}">删除</button>
       <div class="pfs">${FLAGS.filter(([k]) => r.proof && r.proof[k]).map(([k, off, on]) => `<a class="pf" target="_blank" href="files/${encodeURIComponent(r.id)}/${enc(r.proof[k])}?inline=1"><img src="files/${encodeURIComponent(r.id)}/${enc(r.proof[k])}?inline=1" alt="${on}" onerror="this.outerHTML='<span class=broken>打开图片</span>'"><span>${on}</span></a>`).join('')}</div></td>
   </tr>`;
-  $('list').innerHTML = `<table><tr><th></th><th>备注</th><th>定价</th><th>文件</th><th class="a">状态</th></tr>${todo.map(tr).join('')}${done.length ? `<tr class="sep"><td colspan="5">已完成</td></tr>` + done.map(tr).join('') : ''}</table>`;
+  $('list').innerHTML = `<table class="rows"><tr class="hd"><th></th><th>备注</th><th>定价</th><th>文件</th><th class="a">状态</th></tr>${todo.map(tr).join('')}${done.length ? `<tr class="sep"><td colspan="5">已完成</td></tr>` + done.map(tr).join('') : ''}</table>`;
 }
 async function upload(rid, list) {
   const fd = new FormData(); let total = 0;
