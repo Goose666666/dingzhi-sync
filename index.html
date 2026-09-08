@@ -68,9 +68,9 @@ td.a,th.a{width:380px;text-align:right;white-space:nowrap}
 td.note .nw{display:flex;align-items:center;gap:8px}
 td.note .nw input{flex:1;min-width:0}
 .gd{flex:none}
-.gd{height:28px;padding:0 11px;font-size:12.5px;border-radius:999px;border:1px solid #f0cccc;color:var(--red);background:#fff;white-space:nowrap}
-.gd:hover{background:#fff5f5}
-.gd.on{background:var(--red);border-color:var(--red);color:#fff;font-weight:600}
+.gd{height:28px;width:28px;padding:0;font-size:15px;line-height:1;border-radius:999px;border:1px solid var(--line);color:#c3ccd8;background:#fff}
+.gd:hover{border-color:#f0cccc;color:var(--red);background:#fff5f5}
+.gd.on{width:auto;padding:0 11px;font-size:12.5px;background:var(--red);border-color:var(--red);color:#fff;font-weight:600;white-space:nowrap}
 tr.gold td:first-child{box-shadow:inset 3px 0 0 var(--red)}
 .gdtag{font-size:11.5px;color:#fff;background:var(--red);border-radius:999px;padding:1px 7px;font-weight:600;white-space:nowrap}
 .steps button.on::before{content:"✓ ";font-weight:700}
@@ -468,14 +468,15 @@ function render() {
   if (S.topic === 'S') return renderSummary();
   if (S.topic === 'T') return renderTrash();
   const rows = S.records.filter(r => r.topic === S.topic);
-  const todo = rows.filter(r => !r.done).sort((a, b) => a.created.localeCompare(b.created));
-  const done = rows.filter(r => r.done).sort((a, b) => b.updated.localeCompare(a.updated));
+  const first = (a, b) => (b.gold ? 1 : 0) - (a.gold ? 1 : 0);        // 冲国奖的排在最前面
+  const todo = rows.filter(r => !r.done).sort((a, b) => first(a, b) || a.created.localeCompare(b.created));
+  const done = rows.filter(r => r.done).sort((a, b) => first(a, b) || b.updated.localeCompare(a.updated));
   $('sub').textContent = rows.length ? `${todo.length} 个在做 · ${done.length} 个已完成` : '';
   if (!rows.length) { $('list').innerHTML = '<div class="empty">还没有客户</div>'; return; }
   let n = 0;
   const tr = r => `<tr class="${r.done ? 'done' : ''}${r.gold ? ' gold' : ''}">
     <td class="n">${String(++n).padStart(2, '0')}</td>
-    <td class="note"><div class="nw"><button class="gd ${r.gold ? 'on' : ''}" data-gold="${r.id}">冲国奖</button><input value="${esc(r.note || '')}" placeholder="备注" data-note="${r.id}"></div></td>
+    <td class="note"><div class="nw"><button class="gd ${r.gold ? 'on' : ''}" data-gold="${r.id}" title="冲国奖">${r.gold ? '冲国奖' : '☆'}</button><input value="${esc(r.note || '')}" placeholder="备注" data-note="${r.id}"></div></td>
     <td class="price"><input type="number" min="0" step="1" value="${r.price || ''}" placeholder="定价" data-price="${r.id}"></td>
     <td><div class="tree">${dirRows(r.id, tree(r.files || []), '')}</div><button class="sm" data-up="${r.id}">上传</button> <button class="sm" data-pick="${r.id}">从文件库选</button></td>
     <td class="a"><span class="steps">${FLAGS.map(([k, off, on]) => `<button class="${r[k] ? 'on' : ''}" data-flag="${k}" data-id="${r.id}">${r[k] ? on : off}</button>`).join('')}</span><button class="sm ghost warn del" data-del="${r.id}">删除</button>
