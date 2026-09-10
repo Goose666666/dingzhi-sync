@@ -57,7 +57,8 @@ td{background:var(--card);padding:14px;vertical-align:top;border-top:1px solid v
 tr td:first-child{border-left:1px solid var(--line);border-radius:12px 0 0 12px}
 tr td:last-child{border-right:1px solid var(--line);border-radius:0 12px 12px 0}
 tr:hover td{box-shadow:0 6px 18px -12px rgba(15,23,42,.25)}
-td.n{width:56px;font-weight:700;color:var(--mute);font-size:15px}
+td.n{width:62px;font-weight:700;color:var(--mute);font-size:15px}
+.tp{display:block;margin-top:8px;height:26px;padding:0 4px;font:inherit;font-size:12px;font-weight:400;color:var(--mute);border:1px solid var(--line);border-radius:7px;background:#fff;cursor:pointer}
 td.note{width:330px}
 td.note input{width:100%}
 td.price{width:120px}
@@ -241,7 +242,8 @@ tr.drop{box-shadow:inset 0 0 0 2px var(--acc)}
   table.rows tr{display:block;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:12px;position:relative}
   table.rows td{display:block;width:auto;background:transparent;border:0;padding:5px 0}
   table.rows tr td:first-child,table.rows tr td:last-child{border:0;border-radius:0}
-  table.rows td.n{position:absolute;top:14px;right:14px;padding:0}
+  table.rows td.n{position:absolute;top:14px;right:14px;padding:0;display:flex;align-items:center;gap:8px}
+  table.rows td.n .tp{margin:0}
   table.rows td.note{padding-right:30px}
   table.rows td.a{text-align:left;white-space:normal;display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start}
   table.rows td.a .pfs{flex-basis:100%;margin-top:4px}
@@ -588,7 +590,7 @@ function render() {
     return `<div class="hist">${xs.map(x => `<div>${esc(x.by)} ${esc(x.what)} · ${when(x.at)}</div>`).join('')}${add}</div>`;
   };
   const tr = r => `<tr class="${r.done ? 'done' : ''}${r.gold ? ' gold' : ''}" data-row="${r.id}">
-    <td class="n">${String(++n).padStart(2, '0')}</td>
+    <td class="n">${String(++n).padStart(2, '0')}<select class="tp" data-topic="${r.id}">${['A', 'B', 'C'].map(k => `<option value="${k}"${k === r.topic ? ' selected' : ''}>${k} 题</option>`).join('')}</select></td>
     <td class="note"><div class="nw"><button class="gd ${r.gold ? 'on' : ''}" data-gold="${r.id}" title="冲国奖">${r.gold ? '冲国奖' : '☆'}</button><input value="${esc(r.note || '')}" placeholder="备注" data-note="${r.id}"></div>${hist(r)}</td>
     <td class="price"><input type="number" min="0" step="1" value="${r.price || ''}" placeholder="定价" data-price="${r.id}"></td>
     <td><div class="tree">${dirRows(r.id, tree(r.files || []), '')}</div><button class="sm" data-up="${r.id}">上传</button> <button class="sm" data-pick="${r.id}">从文件库选</button></td>
@@ -669,6 +671,12 @@ document.addEventListener('click', async e => {
 document.addEventListener('toggle', e => { const d = e.target.closest('details[data-dir]'); if (!d) return; d.open ? S.closed.delete(d.dataset.dir) : S.closed.add(d.dataset.dir); }, true);
 document.addEventListener('change', async e => {
   const ck = e.target.closest('[data-psel]'); if (ck && S.pick) { ck.checked ? S.pick.sel.set(ck.dataset.psel, 1) : S.pick.sel.delete(ck.dataset.psel); $('pkSel').textContent = S.pick.sel.size ? `已选 ${S.pick.sel.size} 项` : ''; return; }
+  const tp = e.target.closest('[data-topic]');
+  if (tp) {
+    try { await api('api/records/' + tp.dataset.topic, { method: 'PUT', body: JSON.stringify({ topic: tp.value }) }); await refresh(); toast('已挪到 ' + tp.value + ' 题'); }
+    catch (err) { toast(err.message); }
+    return;
+  }
   const i = e.target.closest('[data-note],[data-price]'); if (!i) return;
   const id = i.dataset.note || i.dataset.price, body = i.dataset.note ? { note: i.value } : { price: Number(i.value) || 0 };
   try { await api('api/records/' + id, { method: 'PUT', body: JSON.stringify(body) }); const r = S.records.find(r => r.id === id); if (r) Object.assign(r, body); } catch (err) { toast(err.message); }

@@ -552,6 +552,20 @@ class Handler(BaseHTTPRequestHandler):
                 if "need" in b:
                     r["need"] = str(b["need"]).strip()[:2000]
                 acts = []
+                if "topic" in b:
+                    t2 = str(b["topic"]).strip().upper()
+                    if t2 in TOPICS and t2 != r["topic"]:
+                        used = [x.get("seq", 0) for x in d["records"] if x["topic"] == t2]
+                        used += [t["rec"].get("seq", 0) for t in d.get("trash", [])
+                                 if t["kind"] == "row" and t["rec"]["topic"] == t2]
+                        old = folder_of(r)
+                        was = r["topic"]
+                        r["topic"], r["seq"] = t2, 1 + max(used or [0])
+                        new = folder_of(r)
+                        if os.path.exists(old) and not os.path.exists(new):
+                            os.makedirs(os.path.dirname(new), exist_ok=True)
+                            os.replace(old, new)
+                        acts.append("从 %s 题挪到 %s 题" % (was, t2))
                 if "note" in b and str(b["note"]).strip()[:500] != r.get("note", ""):
                     acts.append("改了备注")
                 if "note" in b:
